@@ -2,7 +2,7 @@
 
 **Central de operação para BPO financeiro:** tarefas recorrentes por cliente, cronômetro por pessoa, calendário da operação, cofre de acessos e cadastros, tudo num lugar só e com trilha de quem fez o quê.
 
-> **Status:** protótipo navegável (HTML, CSS e JavaScript, sem dependências). Todos os nomes de clientes, pessoas, valores e acessos são **fictícios**. Próxima fase: app em Next.js + Supabase publicado na Vercel.
+> **Status:** protótipo navegável + **backend em Supabase** (tabelas, regras, permissões e 58 testes automáticos). Todos os nomes de clientes, pessoas, valores e acessos são **fictícios**. Próxima fase: app em Next.js + Supabase publicado na Vercel.
 
 ---
 
@@ -76,6 +76,12 @@ As regras de negócio completas estão em [`docs/regras-de-negocio.md`](docs/reg
 - Dados fictícios gerados em memória (recarregar a página volta tudo ao início).
 - Tema por variáveis CSS (claro e escuro); gráficos feitos em HTML e CSS.
 
+**Backend (pronto)**
+
+- Supabase/Postgres: 3 migrations com tabelas, funções de regra de negócio, RLS e views. Detalhes em [`supabase/README.md`](supabase/README.md).
+- O tempo de cada tarefa é calculado no banco, com o relógio do servidor; as senhas ficam cifradas, com a chave no Vault.
+- 58 testes automáticos num Postgres descartável (`npm run test:db`).
+
 **Destino (aplicação)**
 
 | Camada | Tecnologia |
@@ -94,6 +100,12 @@ CentralBPO/
 │   └── index.html            # protótipo navegável
 ├── docs/
 │   └── regras-de-negocio.md  # todas as regras decididas, fonte da verdade
+├── supabase/
+│   ├── migrations/           # tabelas, regras (funções) e acesso (RLS + views)
+│   ├── agendamentos/         # pg_cron: fechamento das 22h e geração diária
+│   ├── testes/rodar.mjs      # 58 testes automáticos
+│   └── README.md             # como aplicar e quais funções o app chama
+├── package.json              # npm run test:db
 ├── vercel.json               # publica o protótipo na raiz do site
 ├── LICENSE
 └── README.md
@@ -116,7 +128,7 @@ Depois acesse `http://localhost:3000/prototipo/`.
 ## Próximos passos
 
 1. Revisão geral do protótipo com a equipe
-2. Especificação das tabelas no Supabase e das regras de acesso (RLS) por papel
+2. ~~Tabelas no Supabase e regras de acesso por papel~~ ✓ (backend pronto e testado)
 3. App em Next.js publicado na Vercel, com login individual
 4. Rotinas agendadas: fechamento das 22h e resumos por e-mail
 5. Painel do agente de IA dentro da tela do cliente

@@ -55,3 +55,6 @@ desktop.ini
 *.log
 tmp/
 *.tmp
+
+# Base do esquema operacional usada nos testes: vem do repositório do Agente (tem dados internos).
+supabase/testes/base/
