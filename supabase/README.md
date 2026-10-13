@@ -13,7 +13,7 @@ O backend **se apoia no esquema operacional que já existe** (empresas, perfis d
 | `migrations/…_central_bpo_acesso.sql` | RLS, views de leitura e quem pode chamar cada função |
 | `migrations/…_central_bpo_ajustes.sql` | Lê as regras no formato das rotinas que já existem ("sexta", dias [1, 15], anual) e deixa as views só para leitura |
 | `agendamentos/central_bpo_cron.sql` | Rotinas agendadas (pg_cron): fechar o dia às 22h e gerar as tarefas às 05h |
-| `testes/rodar.mjs` | 66 testes automáticos num Postgres descartável |
+| `testes/rodar.mjs` | 67 testes automáticos num Postgres descartável |
 
 ## Princípios
 

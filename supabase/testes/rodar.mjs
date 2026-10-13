@@ -268,6 +268,7 @@ checar("histórico da Ana: só dela", (await val(`select count(distinct usuario_
 await como(P.Carlos);
 const tiposCarlos = await val(`select string_agg(distinct tipo_recorrencia, ',' order by tipo_recorrencia) from public.central_vw_tarefas`);
 checar("gestor financeiro: só mensais e pontuais, de todos os clientes", tiposCarlos === "mensal,pontual", tiposCarlos);
+checkar_anual: { checar("gestor financeiro também vê as anuais", (await val(`select public.central_ve_tipo('anual')`)) === true && (await val(`select public.central_ve_tipo('diaria')`)) === false); }
 await como(P.Paulo);
 checar("supervisor vê o histórico de todos", (await val(`select count(distinct usuario_id) from public.central_vw_historico`)) >= 3);
 await db.exec(`reset role`);
