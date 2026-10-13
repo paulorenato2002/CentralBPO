@@ -58,3 +58,7 @@ tmp/
 
 # Base do esquema operacional usada nos testes: vem do repositório do Agente (tem dados internos).
 supabase/testes/base/
+
+# Gerados na publicação (config com a chave pública do ambiente e biblioteca copiada)
+app/config.js
+app/vendor/

@@ -1,0 +1,65 @@
+// Conexão com o Supabase e tradução dos erros do banco.
+// Regra do backend: o app LÊ pelas tabelas/views (com RLS) e GRAVA só pelas funções central_*.
+const cfg = window.CENTRAL_CONFIG || {};
+if (!cfg.url || !cfg.anonKey) {
+  document.body.innerHTML = '<p style="padding:40px;font-family:system-ui">Configuração ausente (config.js). Avise o administrador.</p>';
+  throw new Error("config.js ausente");
+}
+
+export const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "central-bpo-sessao" }
+});
+
+const MENSAGENS = {
+  SEM_ACESSO: "Seu usuário não tem acesso ativo à Central. Fale com o administrador.",
+  SEM_ACESSO_CLIENTE: "Você não atende este cliente.",
+  DIA_FECHADO: "O registro de hoje já foi fechado (22h). Amanhã o cronômetro volta do zero.",
+  OUTRO_CLIENTE_RODANDO: "Você está com outro cliente rodando. Pause ou finalize antes de entrar em outro.",
+  SESSAO_INVALIDA: "O cronômetro não foi encontrado. Recarregue a página.",
+  SESSAO_NAO_RODANDO: "O cronômetro deste cliente não está rodando.",
+  JA_FINALIZADA: "Este cliente já foi finalizado hoje.",
+  TAREFA_INVALIDA: "Tarefa não encontrada.",
+  JA_CONCLUIDA: "Esta tarefa já foi concluída.",
+  SEM_PERMISSAO: "Você não tem permissão para isso.",
+  CHECKLIST_INCOMPLETO: "Marque todos os itens do checklist antes de concluir.",
+  ENTRE_NO_CLIENTE: "Entre no cliente (com o cronômetro rodando) para concluir.",
+  ITEM_INVALIDO: "Item do checklist não encontrado.",
+  DESTINO_INVALIDO: "Essa pessoa não está ativa na Central.",
+  ORIGEM_INVALIDA: "Essa pessoa não é responsável por esta tarefa.",
+  JA_RESPONSAVEL: "Essa pessoa já é responsável por esta tarefa.",
+  DIARIA_SEM_DATAS: "Tarefa diária não tem datas editáveis.",
+  PRAZO_OBRIGATORIO: "Informe a data de entrega.",
+  META_DEPOIS_DA_ENTREGA: "A meta não pode ser depois da entrega.",
+  DADOS_INCOMPLETOS: "Preencha os campos obrigatórios.",
+  ACESSO_INVALIDO: "Acesso não encontrado.",
+  CHAVE_AUSENTE: "O cofre de senhas não está configurado. Avise o administrador.",
+  MOTIVO_INVALIDO: "Ação inválida.",
+  ACAO_INVALIDA: "Ação inválida."
+};
+
+export class ErroCentral extends Error {
+  constructor(codigo, mensagem) { super(mensagem); this.codigo = codigo; }
+}
+
+export function traduzir(e) {
+  const msg = (e && e.message) || String(e);
+  const m = msg.match(/^([A-Z][A-Z_]{3,})\b/);
+  const codigo = m ? m[1] : null;
+  if (codigo && MENSAGENS[codigo]) return new ErroCentral(codigo, MENSAGENS[codigo]);
+  if (/jwt|token|expired|not authenticated/i.test(msg)) return new ErroCentral("SESSAO", "Sua sessão expirou. Entre de novo.");
+  if (/permission denied/i.test(msg)) return new ErroCentral("SEM_PERMISSAO", MENSAGENS.SEM_PERMISSAO);
+  if (/fetch|network|failed to/i.test(msg)) return new ErroCentral("REDE", "Sem conexão com o servidor. Confira a internet e tente de novo.");
+  return new ErroCentral(codigo, "Não deu certo: " + msg);
+}
+
+export async function rpc(nome, args = {}) {
+  const { data, error } = await sb.rpc(nome, args);
+  if (error) throw traduzir(error);
+  return data;
+}
+
+export async function q(consulta) {
+  const { data, error } = await consulta;
+  if (error) throw traduzir(error);
+  return data;
+}

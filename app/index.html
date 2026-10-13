@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Central BPO</title>
+<link rel="stylesheet" href="./estilo.css">
+<script src="./config.js"></script>
+<script src="./vendor/supabase.js"></script>
+<script type="module" src="./js/main.js"></script>
+</head>
+<body class="app-off">
+
+<!-- ================= LOGIN ================= -->
+<div class="login" id="telaLogin" hidden>
+  <form id="fLogin" autocomplete="on">
+    <h1>Central BPO</h1>
+    <p>Entre com o seu usuário.</p>
+    <label>E-mail<input type="email" id="lEmail" autocomplete="username" required></label>
+    <label>Senha<input type="password" id="lSenha" autocomplete="current-password" required></label>
+    <div class="erro" id="lErro" role="alert"></div>
+    <button type="submit" id="lEntrar">Entrar</button>
+  </form>
+</div>
+
+<div class="carregando" id="telaCarregando">Carregando…</div>
+
+<!-- ================= APP ================= -->
+<aside id="lateral" hidden>
+  <div class="brand">Central BPO<small id="marca">Operação</small></div>
+  <a href="#" data-view="home" class="off" title="Etapa 2">Home</a>
+  <a href="#" data-view="clientes" class="on">Tarefas</a>
+  <a href="#" data-view="agenda" class="off" title="Etapa 2">Calendário</a>
+  <a href="#" data-view="historico">Histórico</a>
+  <div class="grp">Cadastros</div>
+  <a href="#" class="off" title="Etapa 3">Clientes</a>
+  <a href="#" class="off" title="Etapa 3">Senhas</a>
+  <a href="#" class="off" title="Etapa 3">Tarefas</a>
+  <a href="#" class="off" title="Etapa 3">Colaboradores</a>
+  <div class="me">
+    <div id="eu" style="font-size:13px;color:var(--side-act)"></div>
+    <div id="papel" style="font-size:11px;opacity:.7;margin-top:2px"></div>
+    <button class="sair-link" id="bSair" type="button">Sair do sistema</button>
+    <div class="tema" id="fonte" title="Tamanho do texto"><button data-z="1">A</button><button data-z="1.15" style="font-size:12.5px">A</button><button data-z="1.3" style="font-size:14px">A</button><button data-z="1.45" style="font-size:15.5px">A</button></div>
+    <div class="tema" id="tema" title="Tema"><button data-t="light">Claro</button><button data-t="dark">Escuro</button><button data-t="">Auto</button></div>
+  </div>
+</aside>
+
+<header class="topbar" id="topo" hidden>
+  <h1 id="titulo">Tarefas</h1>
+  <span style="font-size:12.5px;color:var(--ink3)" id="hoje"></span>
+  <span class="sp"></span>
+  <div class="timer" id="timer">
+    <span class="dot"></span>
+    <span id="tEmp">Nenhuma empresa aberta</span>
+    <span class="st" id="tSt"></span>
+    <b id="tVal">00:00:00</b>
+    <button id="tPau" class="pri" hidden>Pausar empresa</button>
+    <button id="tFim" class="red" hidden>Finalizar empresa</button>
+  </div>
+</header>
+
+<main id="principal" hidden>
+  <!-- ========== TAREFAS: lista de clientes ========== -->
+  <section class="view on" id="v-clientes">
+    <div class="counts" id="counts"></div>
+    <div class="bar">
+      <div class="seg" id="segSit">
+        <button data-v="" class="on">Todos</button>
+        <button data-v="aberto">Em aberto</button>
+        <button data-v="atrasada">Com atrasada</button>
+        <button data-v="concluida">Concluídos</button>
+      </div>
+      <span class="sp"></span>
+      <input type="search" id="q" placeholder="Buscar cliente">
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort" style="width:28px"></th><th class="nosort">Cliente</th><th class="nosort n">Tarefas hoje</th><th class="nosort n">Atrasadas</th><th class="nosort">Hoje</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="foot"><span><span class="sem" style="background:var(--ok)"></span> concluído hoje</span><span><span class="sem" style="background:var(--warn)"></span> em aberto</span><span><span class="sem" style="background:var(--bad)"></span> tem atrasada</span><span>Mostra os clientes que você atende.</span></div>
+  </section>
+
+  <!-- ========== TELA DO CLIENTE ========== -->
+  <section class="view" id="v-empresa">
+    <button class="back" id="voltar">← Voltar à lista de clientes</button>
+    <div class="emphd"><h2 id="eNome"></h2><span id="eRazao"></span><span class="sp" style="flex:1"></span><span id="eProg"></span>
+      <button class="bsen" id="bSenhas">Senhas e acessos</button></div>
+    <div class="cols">
+      <div>
+        <div class="bar">
+          <div class="seg" id="segMinhas"><button data-v="" class="on">Todas</button><button data-v="1">Só as minhas</button></div>
+          <div class="chips" id="chipsTipo"></div>
+          <button class="addp" id="pAbrir">+ Tarefa pontual</button>
+          <span class="sp"></span>
+          <span class="atual" id="eAtual" title="Tempo desde a última tarefa concluída (ou desde que entrou)">tarefa atual <b>00:00:00</b></span>
+        </div>
+        <form class="novo" id="pForm" hidden>
+          <input id="pNome" placeholder="O que precisa fazer?" required maxlength="200">
+          <label>para <input type="date" id="pData" required></label>
+          <button type="submit" class="pri">Criar</button>
+          <button type="button" id="pCanc">Cancelar</button>
+          <span class="hint">Fica com você como responsável.</span>
+        </form>
+        <div id="listaAtras"></div>
+        <div class="blk"><div class="blkhd">Hoje</div><ul class="tasks" id="listaHoje"></ul></div>
+        <div class="blk"><div class="blkhd">Resto da semana</div><div id="semana"></div></div>
+      </div>
+      <div class="notas">
+        <div class="blkhd">Anotações do dia</div>
+        <textarea id="nTxt" rows="4" maxlength="2000" placeholder="Ex.: notas com erro, repassar ao gestor do cliente"></textarea>
+        <button id="nSalvar" type="button">Salvar anotação</button>
+        <p class="hint">Vai no resumo por e-mail para a equipe.</p>
+        <ul id="nLista"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== HISTÓRICO ========== -->
+  <section class="view" id="v-historico">
+    <div class="bar">
+      <select id="hUser"><option value="">Todos os colaboradores</option></select>
+      <select id="hEmp"><option value="">Todos os clientes</option></select>
+      <label class="hint" style="display:flex;gap:6px;align-items:center">Data <input type="date" id="hData"></label>
+      <span class="sp"></span><span class="hint" id="hCount"></span>
+    </div>
+    <ol class="feed" id="regs"></ol>
+  </section>
+</main>
+
+<!-- ========== CARTÃO DA TAREFA ========== -->
+<div class="drawer" id="drawer" hidden>
+  <div class="dhd"><div><div class="dnome" id="dNome"></div><div class="tmeta" id="dTags"></div></div><button id="dFechar" title="Fechar">×</button></div>
+  <div class="dmsg" id="dMsg" hidden></div>
+  <div class="dsec"><h5>Datas e recorrência</h5><div id="dDatas"></div></div>
+  <div class="dsec"><h5>Responsáveis</h5><div id="dResp"></div></div>
+  <div class="dsec" id="dCkSec"><h5>Checklist <span id="dCkProg" class="ckc"></span></h5><ul class="dck" id="dCk"></ul>
+    <form class="dadd" id="dCkAdd"><input id="dCkNovo" maxlength="200" placeholder="+ adicionar item ao checklist"><button>Adicionar</button></form></div>
+  <div class="dsec"><h5>Observações</h5>
+    <textarea id="dObsTxt" rows="2" maxlength="2000" placeholder="Escreva uma observação sobre esta tarefa"></textarea>
+    <button class="dbtn" id="dObsSalvar" type="button">Salvar observação</button>
+    <ul class="dobs" id="dObs"></ul></div>
+  <div class="dfoot" id="dFoot"></div>
+</div>
+
+<!-- ========== SENHAS E ACESSOS DO CLIENTE ========== -->
+<div class="drawer" id="senhas" hidden>
+  <div class="dhd"><div><div class="dnome">Senhas e acessos · <span id="sEmp"></span></div>
+    <div class="tmeta"><span class="criada">Cada visualização e cópia fica registrada no histórico.</span></div></div><button id="sFechar" title="Fechar">×</button></div>
+  <div class="dsec" style="display:flex;gap:6px;flex-wrap:wrap">
+    <input id="sBusca" class="sbusca" placeholder="Buscar: banco, e-mail, prefeitura…">
+  </div>
+  <div id="sLista"></div>
+  <div class="dsec">
+    <button class="dbtn sec" id="sNovoAbrir" type="button">+ Novo acesso</button>
+    <form class="snovo" id="sNovo" hidden autocomplete="off">
+      <div class="sg"><label>Sistema<input id="nSis" required maxlength="120" placeholder="Ex.: Banco Itaú"></label>
+        <label>Tipo<select id="nTipo"><option value="banco">Banco</option><option value="plataforma">Plataforma</option><option value="email">E-mail</option><option value="governo">Governo</option><option value="outro">Outro</option></select></label></div>
+      <label>Link<input id="nLink" type="url" maxlength="300" placeholder="https://"></label>
+      <div class="sg"><label>Usuário<input id="nUsu" maxlength="200" autocomplete="off"></label><label>Senha<input id="nSen" type="password" maxlength="500" autocomplete="new-password"></label></div>
+      <label>Observações de acesso<input id="nObs" maxlength="500"></label>
+      <div style="display:flex;gap:6px"><button class="dbtn" type="submit">Salvar acesso</button><button class="dbtn sec" type="button" id="sNovoCanc">Cancelar</button></div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<dialog id="dlg">
+  <div class="hd" id="dlgHd"></div>
+  <div class="bd" id="dlgTxt"></div>
+  <div class="ft" id="dFt"></div>
+</dialog>
+</body>
+</html>

@@ -7,9 +7,12 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test:db": "node supabase/testes/rodar.mjs"
+    "test:db": "node supabase/testes/rodar.mjs",
+    "build": "node scripts/gerar-config.mjs",
+    "dev": "node scripts/gerar-config.mjs && node scripts/servidor-local.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.3.0"
+    "@electric-sql/pglite": "^0.3.0",
+    "@supabase/supabase-js": "^2.117.3"
   }
 }
