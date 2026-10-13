@@ -106,6 +106,8 @@ CentralBPO/
 │   ├── testes/rodar.mjs      # 71 testes automáticos
 │   └── README.md             # como aplicar e quais funções o app chama
 ├── package.json              # npm run test:db
+├── SECURITY.md               # proteções e checklist de instalação
+├── .env.example              # variáveis de ambiente (sem valores)
 ├── vercel.json               # publica o protótipo na raiz do site
 ├── LICENSE
 └── README.md
@@ -132,6 +134,10 @@ Depois acesse `http://localhost:3000/prototipo/`.
 3. App em Next.js publicado na Vercel, com login individual
 4. Rotinas agendadas: fechamento das 22h e resumos por e-mail
 5. Painel do agente de IA dentro da tela do cliente
+
+## Segurança
+
+Como a Central protege os dados e o checklist de instalação estão em [`SECURITY.md`](SECURITY.md).
 
 ## Autoria
 
