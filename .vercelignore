@@ -1,0 +1,11 @@
+# A Vercel só recebe o necessário para o build e a função /api/admin.
+# Tudo o mais (protótipo, migrations, documentos, arquivos locais, .env) fica fora do upload.
+/*
+!/api
+!/app
+!/scripts
+!/package.json
+!/package-lock.json
+!/vercel.json
+/app/config.js
+/app/vendor
