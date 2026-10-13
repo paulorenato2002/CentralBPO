@@ -262,6 +262,10 @@ const visAna = await val(`select string_agg(distinct empresa_nome, ',') from pub
 checar("Ana só vê a Alfa", visAna === "Alfa", visAna);
 await erro("Ana não lê a senha cifrada", `select senha_cifrada from public.central_acessos`, "permission denied");
 checar("Ana lê o acesso sem a senha", (await val(`select count(*) from public.central_acessos`)) == 1);
+await erro("app não marca tarefa como concluída direto na tabela", `update public.tarefas_operacionais set status = 'concluida'`, "permission denied");
+await erro("app não mexe no tempo direto", `update public.apontamentos_tempo set fim = now()`, "permission denied");
+await erro("app não cria rotina direto", `insert into public.rotinas_empresa (empresa_id, modelo_rotina_id) values ('${E.Alfa}', '${E.Alfa}')`, "permission denied");
+await erro("auxiliar interna fora da API", `select public.central_hms(10)`, "permission denied");
 await erro("app não grava pelas views", `delete from public.central_vw_sessoes`, "permission denied");
 await erro("app não grava direto nas tabelas", `insert into public.central_vinculos values ('${E.Beta}', '${P.Ana}')`, "permission denied");
 checar("histórico da Ana: só dela", (await val(`select count(distinct usuario_id) from public.central_vw_historico`)) == 1);
