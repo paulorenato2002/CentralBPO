@@ -188,6 +188,8 @@ async function carregarAnotacoes() {
 
 /* ================= cartão da tarefa ================= */
 let cartaoId = null;
+// depois de mexer no cartão, atualiza a tela de onde ele foi aberto (cliente, Home ou Calendário)
+const recarregar = () => (E.view === "empresa" ? carregar() : app.atualizar());
 const DSEM = { 1: "segunda", 2: "terça", 3: "quarta", 4: "quinta", 5: "sexta", 6: "sábado", 7: "domingo", 0: "domingo" };
 function recorrencia(t, r) {
   const g = (r && r.regra_agendamento) || {};
@@ -209,16 +211,16 @@ function iniciarCartao() {
   $("#dFechar").onclick = fecharCartao;
   $("#drawer").addEventListener("change", (ev) => {
     const ck = ev.target.closest("[data-ck]");
-    if (ck) return rpc("central_marcar_item", { p_item: ck.dataset.ck, p_marcado: ck.checked }).then(() => { $("#dMsg").hidden = true; return Promise.all([abrirCartao(cartaoId), carregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
+    if (ck) return rpc("central_marcar_item", { p_item: ck.dataset.ck, p_marcado: ck.checked }).then(() => { $("#dMsg").hidden = true; return Promise.all([abrirCartao(cartaoId), recarregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
     const tr = ev.target.closest("[data-tr]");
-    if (tr && tr.value) return rpc("central_transferir", { p_tarefa: cartaoId, p_de: tr.dataset.tr, p_para: tr.value }).then(() => { toast("Responsável transferido"); return Promise.all([abrirCartao(cartaoId), carregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
+    if (tr && tr.value) return rpc("central_transferir", { p_tarefa: cartaoId, p_de: tr.dataset.tr, p_para: tr.value }).then(() => { toast("Responsável transferido"); return Promise.all([abrirCartao(cartaoId), recarregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
     if (ev.target.id === "dMeta" || ev.target.id === "dEntrega") {
       const meta = $("#dMeta").value || null, prazo = $("#dEntrega").value;
-      return rpc("central_alterar_datas", { p_tarefa: cartaoId, p_meta: meta, p_prazo: prazo }).then(() => { toast("Datas alteradas"); return Promise.all([abrirCartao(cartaoId), carregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
+      return rpc("central_alterar_datas", { p_tarefa: cartaoId, p_meta: meta, p_prazo: prazo }).then(() => { toast("Datas alteradas"); return Promise.all([abrirCartao(cartaoId), recarregar()]); }).catch((e) => { avisoErro(e); abrirCartao(cartaoId); });
     }
   });
   $("#dCkAdd").onsubmit = (ev) => { ev.preventDefault(); const txt = $("#dCkNovo").value.trim(); if (!txt) return;
-    rpc("central_adicionar_item", { p_tarefa: cartaoId, p_texto: txt }).then(() => { $("#dCkNovo").value = ""; return Promise.all([abrirCartao(cartaoId), carregar()]); }).catch(avisoErro); };
+    rpc("central_adicionar_item", { p_tarefa: cartaoId, p_texto: txt }).then(() => { $("#dCkNovo").value = ""; return Promise.all([abrirCartao(cartaoId), recarregar()]); }).catch(avisoErro); };
   $("#dObsSalvar").onclick = travar($("#dObsSalvar"), async () => {
     const txt = $("#dObsTxt").value.trim(); if (!txt) return;
     await rpc("central_comentar", { p_tarefa: cartaoId, p_texto: txt }); $("#dObsTxt").value = ""; await abrirCartao(cartaoId);
@@ -227,7 +229,7 @@ function iniciarCartao() {
 
 export function fecharCartao() { cartaoId = null; $("#drawer").hidden = true; }
 
-async function abrirCartao(id, msg) {
+export async function abrirCartao(id, msg) {
   fecharSenhas();
   cartaoId = id;
   const t = await q(sb.from("central_vw_tarefas").select("*").eq("id", id).single());

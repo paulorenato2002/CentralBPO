@@ -3,6 +3,7 @@ import { sb, q, rpc } from "./api.js";
 import { E, cliente, nomeDe, segundosRodando } from "./estado.js";
 import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from "./ui.js";
 import * as Emp from "./empresa.js";
+import * as Painel from "./painel.js";
 
 /* ================= tema e tamanho do texto (preferência deste navegador) ================= */
 function preferencia(chave, padrao) { try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; } }
@@ -28,7 +29,7 @@ function mostrar(qual) {
   document.body.classList.toggle("app-off", !app);
 }
 
-const TITULOS = { clientes: "Tarefas", historico: "Histórico de atividade" };
+const TITULOS = { home: "Home", clientes: "Tarefas", agenda: "Calendário", historico: "Histórico de atividade" };
 async function ir(view, id) {
   if (view !== "empresa") { Emp.fecharCartao(); Emp.fecharSenhas(); }
   E.view = view; if (id) E.aberta = id;
@@ -36,6 +37,8 @@ async function ir(view, id) {
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
   $("#titulo").textContent = view === "empresa" ? "Tarefas / " + cliente(E.aberta).nome : TITULOS[view] || "";
   try {
+    if (view === "home") await Painel.desenharHome();
+    if (view === "agenda") await Painel.desenharAgenda();
     if (view === "clientes") await desenharClientes();
     if (view === "empresa") await Emp.carregar();
     if (view === "historico") await desenharHistorico();
@@ -90,7 +93,7 @@ async function abrirApp() {
   $("#hoje").textContent = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   mostrar("app");
   await Emp.carregarSessoes();
-  ir(E.rodando ? "empresa" : "clientes", E.rodando ? E.rodando.empresa_id : null);
+  ir(E.rodando ? "empresa" : "home", E.rodando ? E.rodando.empresa_id : null);
 }
 
 async function carregarClientes() {
@@ -165,7 +168,10 @@ async function desenharHistorico() {
 }
 
 /* ================= início ================= */
-Emp.iniciar({ ir });
+// redesenha a tela atual sem fechar o cartão (usado depois de mexer numa tarefa pelo cartão)
+const atualizar = () => (E.view === "home" ? Painel.desenharHome() : E.view === "agenda" ? Painel.desenharAgenda() : E.view === "clientes" ? desenharClientes() : Promise.resolve()).catch(avisoErro);
+Emp.iniciar({ ir, atualizar });
+Painel.iniciar({ entrar: (id) => Emp.entrar(id).catch(avisoErro), abrirCartao: (id) => Emp.abrirCartao(id).catch(avisoErro) });
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") mostrar("login"); });
 abrirApp().catch((e) => { avisoErro(e); mostrar("login"); });
 void nomeDe; void travar;

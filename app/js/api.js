@@ -63,3 +63,14 @@ export async function q(consulta) {
   if (error) throw traduzir(error);
   return data;
 }
+
+// O Supabase devolve no máximo 1.000 linhas por consulta: busca em páginas até acabar.
+// montar() precisa criar a consulta de novo a cada página (com ordem fixa).
+export async function todas(montar, pagina = 1000) {
+  const tudo = [];
+  for (let de = 0; ; de += pagina) {
+    const parte = await q(montar().range(de, de + pagina - 1));
+    tudo.push(...parte);
+    if (parte.length < pagina) return tudo;
+  }
+}

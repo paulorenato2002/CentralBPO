@@ -29,9 +29,9 @@
 <!-- ================= APP ================= -->
 <aside id="lateral" hidden>
   <div class="brand">Central BPO<small id="marca">Operação</small></div>
-  <a href="#" data-view="home" class="off" title="Etapa 2">Home</a>
-  <a href="#" data-view="clientes" class="on">Tarefas</a>
-  <a href="#" data-view="agenda" class="off" title="Etapa 2">Calendário</a>
+  <a href="#" data-view="home">Home</a>
+  <a href="#" data-view="clientes">Tarefas</a>
+  <a href="#" data-view="agenda">Calendário</a>
   <a href="#" data-view="historico">Histórico</a>
   <div class="grp">Cadastros</div>
   <a href="#" class="off" title="Etapa 3">Clientes</a>
@@ -62,8 +62,40 @@
 </header>
 
 <main id="principal" hidden>
+  <!-- ========== HOME: análise do fluxo de entrega ========== -->
+  <section class="view" id="v-home">
+    <div class="counts" id="tCounts"></div>
+    <div class="bar">
+      <div class="seg" id="tPer">
+        <button data-v="hoje" class="on">Hoje</button>
+        <button data-v="semana">Esta semana</button>
+        <button data-v="mes">Este mês</button>
+        <button data-v="custom">Personalizado</button>
+      </div>
+      <span class="custom" id="tCustom" hidden><input type="date" id="tDe" aria-label="De"> a <input type="date" id="tAte" aria-label="Até"></span>
+      <div class="seg" id="tMinhas"><button data-v="" class="on">Todas</button><button data-v="1">Só as minhas</button></div>
+      <div class="chips" id="tTipos"></div>
+      <span class="sp"></span>
+      <span class="hint" id="tPerTxt"></span>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr>
+        <th class="nosort">Cliente</th><th class="nosort n">Atrasadas</th><th class="nosort n">Hoje</th><th class="nosort n">Previstas</th>
+        <th class="nosort n">Concluídas</th><th class="nosort" style="width:180px">Andamento do período</th><th class="nosort"></th>
+      </tr></thead>
+      <tbody id="tRows" class="static"></tbody>
+    </table></div>
+    <div class="foot"><span>Atrasadas contam qualquer data anterior a hoje. Andamento = concluídas ÷ total do período.</span></div>
+    <div class="graf">
+      <div class="blk"><div class="blkhd">Entregas por dia <span class="sub" id="g1sub"></span></div><div id="g1" class="g1"></div>
+        <div class="gleg"><span><i class="lp"></i>previstas</span><span><i class="lc"></i>concluídas</span></div></div>
+      <div class="blk"><div class="blkhd">Tempo médio por tarefa · período × média histórica</div><div id="g2" class="g2"></div>
+        <div class="gleg"><span><i class="lb"></i>média no período</span><span><i class="lt"></i>média histórica (90 dias antes)</span></div></div>
+    </div>
+  </section>
+
   <!-- ========== TAREFAS: lista de clientes ========== -->
-  <section class="view on" id="v-clientes">
+  <section class="view" id="v-clientes">
     <div class="counts" id="counts"></div>
     <div class="bar">
       <div class="seg" id="segSit">
@@ -115,6 +147,20 @@
         <ul id="nLista"></ul>
       </div>
     </div>
+  </section>
+
+  <!-- ========== CALENDÁRIO DA OPERAÇÃO ========== -->
+  <section class="view" id="v-agenda">
+    <div class="bar">
+      <div class="seg" id="aModo"><button data-v="mes" class="on">Mês</button><button data-v="semana">Semana</button></div>
+      <button class="navb" id="aAnt" type="button" aria-label="Anterior">‹</button><b id="aTit" class="atit"></b><button class="navb" id="aProx" type="button" aria-label="Próximo">›</button><button class="navb" id="aHoje" type="button">Hoje</button>
+      <span class="sp"></span>
+      <select id="aEmp"><option value="">Todos os clientes</option></select>
+      <select id="aResp"><option value="">Todos os responsáveis</option></select>
+      <div class="chips" id="aTipos"></div>
+    </div>
+    <div class="blk cal"><div class="calgrid" id="aGrid"></div></div>
+    <div class="foot"><span>Diárias aparecem somadas por dia. ◎ meta · ▸ entrega. Clique numa tarefa para abrir o cartão.</span></div>
   </section>
 
   <!-- ========== HISTÓRICO ========== -->
