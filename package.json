@@ -1,6 +1,6 @@
 {
   "name": "central-bpo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Central BPO: operação de BPO financeiro (tarefas, cronômetro, calendário, acessos).",
   "author": "Paulo Renato Nunes de Melo",
@@ -12,7 +12,9 @@
     "dev": "node scripts/gerar-config.mjs && node scripts/servidor-local.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.3.0",
+    "@electric-sql/pglite": "^0.3.0"
+  },
+  "dependencies": {
     "@supabase/supabase-js": "^2.117.3"
   }
 }

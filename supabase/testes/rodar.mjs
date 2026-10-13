@@ -287,5 +287,14 @@ await db.exec(`reset role`);
 const painel = (await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.Adm]), await db.query(`select * from public.central_painel('2026-10-01', '2026-10-31')`)).rows;
 checar("painel da Home calcula por cliente", painel.length >= 1 && painel.some((r) => r.codigo === "101"));
 
+// ---------- 8. rotina anual pela tela de Cadastros ----------
+console.log("\n8. Rotina anual pela tela");
+await dia("2026-10-07", "09:00:00");
+const rAnual = await val(`select public.central_salvar_rotina(null, $1, 'Entrega do DIRPF', 'anual', '{"dia_mes":30,"mes":11}', '2026-10-01', null, true, array[$2]::uuid[], null)`, [E.Alfa, P.Carlos]);   // a Beta foi encerrada na seção 6
+checar("Adm cadastra rotina anual", rAnual.status === "ok");
+const prazoAnual = await val(`select string_agg(prazo::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [rAnual.rotina_id]);
+checar("anual gera em 30/11", prazoAnual === "2026-11-30", `${prazoAnual} · ${JSON.stringify(rAnual)}`);
+await erro("anual sem mês é recusada", `select public.central_salvar_rotina(null, '${E.Beta}', 'Outra anual', 'anual', '{"dia_mes":5}', '2026-10-01', null, true, array['${P.Carlos}']::uuid[], null)`, "MES_INVALIDO");
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

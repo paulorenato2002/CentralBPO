@@ -16,7 +16,9 @@ Nenhum dado real, senha, chave de API ou endereço de banco de produção é ver
 | Tempo | Calculado no servidor (relógio do banco); o navegador não consegue alterar |
 | Senhas de clientes | Cifradas com pgcrypto; a chave fica no Supabase Vault e nunca sai do banco. Toda visualização ou cópia fica registrada |
 | Histórico | Só aceita inclusão: ninguém edita nem apaga |
-| Chaves | A `service_role` fica só no servidor (variável de ambiente da Vercel), nunca no navegador nem no repositório |
+| Chaves | A `service_role` fica só no servidor (variável de ambiente da Vercel), nunca no navegador nem no repositório. O build recusa publicar se a chave pública informada for a `service_role` |
+| Função de servidor | `api/admin.js` (criar login e redefinir senha) só atende quem manda o token de uma sessão de **administrador ativo**; o resto recebe 401/403. As gravações na Central rodam como o próprio Adm, então ficam no histórico com o nome dele |
+| Navegador | CSP sem script de fora (`script-src 'self'`), sem iframe (`frame-ancestors 'none'`), HSTS; todo texto vindo do banco passa por escape; links de acesso só abrem se forem `http(s)` |
 
 ## Checklist de instalação
 

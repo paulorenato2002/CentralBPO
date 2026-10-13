@@ -2,7 +2,7 @@
 
 **Central de operação para BPO financeiro:** tarefas recorrentes por cliente, cronômetro por pessoa, calendário da operação, cofre de acessos e cadastros, tudo num lugar só e com trilha de quem fez o quê.
 
-> **Status:** protótipo navegável + **backend em Supabase** (tabelas, regras, permissões e 76 testes automáticos). Todos os nomes de clientes, pessoas, valores e acessos são **fictícios**. Próxima fase: app em Next.js + Supabase publicado na Vercel.
+> **Status:** app completo ligado ao **Supabase** (login, tarefas, cronômetro, Home, Calendário, Histórico e Cadastros), backend com 79 testes automáticos, pronto para publicar na Vercel. Todos os nomes de clientes, pessoas, valores e acessos deste repositório são **fictícios**.
 
 ---
 
@@ -55,7 +55,7 @@ A Central BPO nasceu para resolver isso, a partir da rotina real de uma operaç�
 | **Histórico** | Registro de atividade por cliente, pessoa e data: iniciou, pausou, concluiu (com tempo), transferiu, consultou senha, alterou cadastro |
 | **Cadastros · Clientes** | Ficha completa: dados, contrato e honorário, sócios, contatos, grupo principal, equipe atrelada; campos sensíveis protegidos |
 | **Cadastros · Senhas** | Todos os acessos de todos os clientes, alerta de senha sem troca há mais de 180 dias, consultas recentes |
-| **Cadastros · Tarefas** | Rotinas por cliente: diária, semanal, quinzenal ou mensal, com meta, responsáveis, checklist padrão e vigência; aplicação a vários clientes de uma vez |
+| **Cadastros · Tarefas** | Rotinas por cliente: diária, semanal, quinzenal, mensal ou anual, com meta, responsáveis, checklist padrão e vigência; aplicação a vários clientes de uma vez |
 | **Cadastros · Colaboradores** | Papel, clientes vinculados, carga horária × horas no mês, redefinição de senha de acesso e **matriz de permissões editável** pelo administrador |
 
 **Também tem:** tema claro e escuro, quatro tamanhos de texto (pensado para leitura confortável) e datas sempre com ano.
@@ -70,23 +70,23 @@ As regras de negócio completas estão em [`docs/regras-de-negocio.md`](docs/reg
 
 ## Estrutura técnica
 
-**Hoje (protótipo)**
+**App** ([`app/`](app/))
 
-- Um único arquivo [`prototipo/index.html`](prototipo/index.html): HTML, CSS e JavaScript puros, sem bibliotecas e sem build.
-- Dados fictícios gerados em memória (recarregar a página volta tudo ao início).
-- Tema por variáveis CSS (claro e escuro); gráficos feitos em HTML e CSS.
+- HTML, CSS e JavaScript puros em módulos, sem framework. A biblioteca do Supabase é copiada para dentro do site no build (nenhum script de fora).
+- O app só **lê** pelas tabelas e views (com RLS) e só **grava** pelas funções `central_*` do banco.
+- Criar login de colaborador e redefinir senha passam pela função de servidor [`api/admin.js`](api/admin.js), que confere se quem chama é administrador. A chave de serviço fica só na Vercel.
 
-**Backend (pronto)**
+**Backend**
 
-- Supabase/Postgres: 3 migrations com tabelas, funções de regra de negócio, RLS e views. Detalhes em [`supabase/README.md`](supabase/README.md).
+- Supabase/Postgres: migrations com tabelas, funções de regra de negócio, RLS e views. Detalhes em [`supabase/README.md`](supabase/README.md).
 - O tempo de cada tarefa é calculado no banco, com o relógio do servidor; as senhas ficam cifradas, com a chave no Vault.
-- 76 testes automáticos num Postgres descartável (`npm run test:db`).
+- 79 testes automáticos num Postgres descartável (`npm run test:db`).
 
-**Destino (aplicação)**
+**Protótipo** ([`prototipo/index.html`](prototipo/index.html)): a versão navegável com dados em memória, usada para desenhar cada tela.
 
 | Camada | Tecnologia |
 |---|---|
-| Interface | Next.js (React) |
+| Interface | HTML, CSS e JavaScript (módulos), sem framework |
 | Banco, login e regras de acesso | Supabase (Postgres, Auth e Row Level Security) |
 | Hospedagem | Vercel |
 | Rotinas agendadas | Fechamento das 22h e resumo por e-mail às 12h30 e às 17h |
@@ -96,6 +96,9 @@ As regras de negócio completas estão em [`docs/regras-de-negocio.md`](docs/reg
 
 ```
 CentralBPO/
+├── app/                      # o app: telas, estilos e módulos JS
+├── api/admin.js              # função de servidor (Vercel): criar login e redefinir senha
+├── scripts/                  # gerar-config (build) e servidor local de teste
 ├── prototipo/
 │   └── index.html            # protótipo navegável
 ├── docs/
@@ -103,35 +106,34 @@ CentralBPO/
 ├── supabase/
 │   ├── migrations/           # tabelas, regras (funções) e acesso (RLS + views)
 │   ├── agendamentos/         # pg_cron: fechamento das 22h e geração diária
-│   ├── testes/rodar.mjs      # 76 testes automáticos
+│   ├── testes/rodar.mjs      # 79 testes automáticos
 │   └── README.md             # como aplicar e quais funções o app chama
 ├── package.json              # npm run test:db
 ├── SECURITY.md               # proteções e checklist de instalação
 ├── .env.example              # variáveis de ambiente (sem valores)
-├── vercel.json               # publica o protótipo na raiz do site
+├── vercel.json               # publica o app, com cabeçalhos de segurança
 ├── LICENSE
 └── README.md
 ```
 
 ## Como usar localmente
 
-**Jeito mais simples:** abra `prototipo/index.html` no navegador (Chrome, Edge ou Firefox atualizados).
-
-**Com um servidor local** (recomendado para testar como vai ficar na Vercel):
+**App:** copie `.env.example` para `.env.local`, preencha com o seu Supabase e rode:
 
 ```bash
-npx serve .
+npm install
+npm run dev
 ```
 
-Depois acesse `http://localhost:3000/prototipo/`.
+Depois acesse `http://127.0.0.1:4173/app/`. O servidor local usa os mesmos cabeçalhos de segurança da Vercel e também serve `/api/admin`.
 
-**Para testar os papéis:** troque o usuário no rodapé da barra lateral (Estagiária, Analista, Supervisor, Gestor ou Adm). No rodapé da aba Tarefas há o link "simular fechamento das 22h".
+**Protótipo:** abra `prototipo/index.html` no navegador. Para testar os papéis, troque o usuário no rodapé da barra lateral.
 
 ## Próximos passos
 
 1. Revisão geral do protótipo com a equipe
 2. ~~Tabelas no Supabase e regras de acesso por papel~~ ✓ (backend pronto e testado)
-3. App em Next.js publicado na Vercel, com login individual
+3. ~~App ligado ao banco, com login individual~~ ✓ (falta publicar na Vercel)
 4. Rotinas agendadas: fechamento das 22h e resumos por e-mail
 5. Painel do agente de IA dentro da tela do cliente
 
