@@ -6,8 +6,12 @@ if (!cfg.url || !cfg.anonKey) {
   throw new Error("config.js ausente");
 }
 
+// Guardado antes de criar o cliente: o link do e-mail de "esqueci minha senha" chega com #...type=recovery
+// e o Supabase limpa o endereço ao ler a sessão.
+export const retornoDoLink = new URLSearchParams(location.hash.replace(/^#/, ""));
+
 export const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: "central-bpo-sessao" }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit", storageKey: "central-bpo-sessao" }
 });
 
 const MENSAGENS = {

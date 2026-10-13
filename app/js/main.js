@@ -1,5 +1,5 @@
 // Entrada do app: login, contexto da pessoa, navegação, lista de clientes e histórico.
-import { sb, q, rpc } from "./api.js";
+import { sb, q, rpc, retornoDoLink } from "./api.js";
 import { E, cliente, nomeDe, segundosRodando } from "./estado.js";
 import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from "./ui.js";
 import * as Emp from "./empresa.js";
@@ -22,7 +22,13 @@ $("#tema").addEventListener("click", (ev) => { const b = ev.target.closest("butt
 $("#fonte").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) aplicarZoom(b.dataset.z); });
 
 /* ================= telas ================= */
-function mostrar(qual) {
+// marca da instalação (logo e ícone): só aparece se o build recebeu as imagens (ver scripts/gerar-config.mjs)
+const MARCA = (window.CENTRAL_CONFIG || {}).marca || {};
+document.querySelectorAll("[data-marca]").forEach((img) => { const f = MARCA[img.dataset.marca]; if (f) { img.src = f; img.hidden = false; } });
+if (MARCA.icone) $("#favicon").href = MARCA.icone;
+
+function mostrar(qual, texto) {
+  if (texto) $("#carregandoTxt").textContent = texto;
   $("#telaCarregando").hidden = qual !== "carregando";
   $("#telaLogin").hidden = qual !== "login";
   const app = qual === "app";
@@ -60,15 +66,60 @@ document.querySelectorAll("aside a[data-view]").forEach((a) => a.addEventListene
 }));
 
 /* ================= login ================= */
+let esqueci = false;   // a mesma tela serve para entrar e para pedir o link de senha nova
+function modoEsqueci(sim) {
+  esqueci = sim;
+  $("#lSenhaRot").hidden = sim; $("#lSenha").required = !sim;
+  $("#lSub").textContent = sim ? "Informe o seu e-mail. Mandamos um link para criar uma senha nova." : "Entre com o seu usuário.";
+  $("#lEntrar").textContent = sim ? "Enviar link" : "Entrar";
+  $("#lEsqueci").textContent = sim ? "Voltar para o login" : "Esqueci minha senha";
+  $("#lErro").textContent = ""; $("#lOk").hidden = true;
+}
+$("#lEsqueci").onclick = () => { modoEsqueci(!esqueci); $("#lEmail").focus(); };
+
 $("#fLogin").onsubmit = async (ev) => {
   ev.preventDefault();
-  const b = $("#lEntrar"); b.disabled = true; $("#lErro").textContent = "";
+  const b = $("#lEntrar"), email = $("#lEmail").value.trim();
+  b.disabled = true; $("#lErro").textContent = ""; $("#lOk").hidden = true;
   try {
-    const { error } = await sb.auth.signInWithPassword({ email: $("#lEmail").value.trim(), password: $("#lSenha").value });
-    if (error) { $("#lErro").textContent = "E-mail ou senha incorretos."; return; }   // não diz qual dos dois
+    if (esqueci) {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/app/" });
+      if (error && /rate|too many|seconds/i.test(error.message)) { $("#lErro").textContent = "Muitos pedidos seguidos. Espere alguns minutos e tente de novo."; return; }
+      // mesma resposta exista ou não o e-mail (não revela quem tem acesso)
+      $("#lOk").textContent = "Se esse e-mail tiver acesso, enviamos um link para criar uma senha nova. Confira a caixa de entrada e o spam. Se não chegar em 5 minutos, peça ao administrador para redefinir a sua senha.";
+      $("#lOk").hidden = false; return;
+    }
+    mostrar("carregando", "Entrando…");
+    const { error } = await sb.auth.signInWithPassword({ email, password: $("#lSenha").value });
+    if (error) { mostrar("login"); $("#lErro").textContent = /fetch|network/i.test(error.message) ? "Sem conexão com o servidor. Confira a internet." : "E-mail ou senha incorretos."; return; }   // não diz qual dos dois
     $("#lSenha").value = "";
     await abrirApp();
-  } catch (e) { $("#lErro").textContent = e.message || "Não deu para entrar."; }
+  } catch (e) { mostrar("login"); $("#lErro").textContent = e.message || "Não deu para entrar."; }
+  finally { b.disabled = false; }
+};
+
+/* ================= link de "esqueci minha senha" (vem do e-mail) ================= */
+const limparEndereco = () => history.replaceState(null, "", location.pathname + location.search);
+async function abrirRecuperacao() {
+  mostrar("carregando", "Abrindo o link…");
+  const { data: { session } } = await sb.auth.getSession();
+  limparEndereco();
+  if (!session) { mostrar("login"); $("#lErro").textContent = "O link expirou ou já foi usado. Peça outro em Esqueci minha senha."; return; }
+  $("#fLogin").hidden = true; $("#fNova").hidden = false; mostrar("login"); $("#nvSenha").focus();
+}
+$("#fNova").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const nova = $("#nvSenha").value, conf = $("#nvConf").value, b = $("#nvSalvar");
+  $("#nvErro").textContent = "";
+  if (nova.length < 8) return ($("#nvErro").textContent = "A senha precisa de pelo menos 8 caracteres.");
+  if (nova !== conf) return ($("#nvErro").textContent = "A confirmação não é igual à nova senha.");
+  b.disabled = true;
+  try {
+    const { error } = await sb.auth.updateUser({ password: nova });
+    if (error) { $("#nvErro").textContent = /weak|pwned|leak/i.test(String(error.code || error.message)) ? "Essa senha é fraca ou já apareceu em vazamentos. Escolha outra." : /same/i.test(String(error.code || error.message)) ? "Essa já é a sua senha atual. Escolha outra." : "Não deu para salvar: " + error.message; return; }
+    $("#fNova").reset(); $("#fNova").hidden = true; $("#fLogin").hidden = false;
+    mostrar("carregando", "Entrando…"); await abrirApp(); toast("Senha nova salva.");
+  } catch (e) { $("#nvErro").textContent = e.message || "Não deu para salvar."; }
   finally { b.disabled = false; }
 };
 $("#bSair").onclick = async () => {
@@ -209,5 +260,9 @@ Emp.iniciar({ ir, atualizar });
 Cad.iniciar({ recarregarBase: () => Promise.all([carregarClientes(), carregarEquipe()]), fecharOutras: () => { Emp.fecharCartao(); Emp.fecharSenhas(); } });
 Painel.iniciar({ entrar: (id) => Emp.entrar(id).catch(avisoErro), abrirCartao: (id) => Emp.abrirCartao(id).catch(avisoErro) });
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") mostrar("login"); });
-abrirApp().catch((e) => { avisoErro(e); mostrar("login"); });
+if (retornoDoLink.get("type") === "recovery") abrirRecuperacao().catch((e) => { avisoErro(e); mostrar("login"); });
+else if (retornoDoLink.get("error_code") || retornoDoLink.get("error")) {
+  limparEndereco(); mostrar("login");
+  $("#lErro").textContent = retornoDoLink.get("error_code") === "otp_expired" ? "O link expirou ou já foi usado. Peça outro em Esqueci minha senha." : "Não deu para abrir o link. Peça outro em Esqueci minha senha.";
+} else abrirApp().catch((e) => { avisoErro(e); mostrar("login"); });
 

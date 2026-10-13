@@ -62,3 +62,4 @@ supabase/testes/base/
 # Gerados na publicação (config com a chave pública do ambiente e biblioteca copiada)
 app/config.js
 app/vendor/
+app/marca/
