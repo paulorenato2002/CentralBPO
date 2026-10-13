@@ -1,0 +1,18 @@
+{
+  "name": "central-bpo",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Central BPO: operação de BPO financeiro (tarefas, cronômetro, calendário, acessos).",
+  "author": "Paulo Renato Nunes de Melo",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test:db": "node supabase/testes/rodar.mjs",
+    "build": "node scripts/gerar-config.mjs",
+    "dev": "node scripts/gerar-config.mjs && node scripts/servidor-local.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "@supabase/supabase-js": "^2.117.3"
+  }
+}

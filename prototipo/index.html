@@ -1,0 +1,2243 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Central BPO</title>
+<style>
+:root{
+  --ink:#111a24; --ink2:#38424e; --ink3:#5c6672;
+  --paper:#f5f7f9; --panel:#ffffff; --line:#d9dee3; --line2:#eceff2;
+  --side:#16202b; --side-ink:#dde3ea; --side-act:#ffffff;
+  --accent:#3f5e8c; --accent-soft:#e6ecf4;
+  --ok:#0e7c66; --ok-soft:#e1f1ec;
+  --warn:#a8631b; --warn-soft:#f6ebdd;
+  --bad:#b0422c; --bad-soft:#f6e3df;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#f1f3f5; --ink2:#c9cfd6; --ink3:#a4adb7;
+    --paper:#14191f; --panel:#1b2129; --line:#2e3640; --line2:#252c35;
+    --side:#0f1318; --side-ink:#9aa4ae; --side-act:#ffffff;
+    --accent:#8ea8d1; --accent-soft:#243246;
+    --ok:#4fb89c; --ok-soft:#173129;
+    --warn:#d69a52; --warn-soft:#352a1b;
+    --bad:#e07a63; --bad-soft:#3a221d;
+  }
+}
+:root[data-theme="dark"]{
+    --ink:#f1f3f5; --ink2:#c9cfd6; --ink3:#a4adb7;
+    --paper:#14191f; --panel:#1b2129; --line:#2e3640; --line2:#252c35;
+    --side:#0f1318; --side-ink:#9aa4ae; --side-act:#ffffff;
+    --accent:#8ea8d1; --accent-soft:#243246;
+    --ok:#4fb89c; --ok-soft:#173129;
+    --warn:#d69a52; --warn-soft:#352a1b;
+    --bad:#e07a63; --bad-soft:#3a221d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{zoom:var(--zoom,1.15);background:var(--paper);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:grid;grid-template-columns:208px 1fr;grid-template-rows:52px 1fr;min-height:calc(100vh / var(--zoom,1.15))}
+
+/* barra lateral */
+aside{grid-row:1/3;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:14px 10px}
+.brand{color:var(--side-act);font-weight:650;font-size:15px;padding:4px 10px 18px;letter-spacing:-.01em}
+.brand small{display:block;font-weight:400;font-size:11.5px;color:var(--side-ink)}
+aside a{display:block;color:var(--side-ink);text-decoration:none;padding:7px 10px;border-radius:3px;font-size:13.5px}
+aside a:hover{color:var(--side-act)}
+aside a.on{color:var(--side-act);background:rgba(255,255,255,.08)}
+aside a.off{opacity:.45;pointer-events:none}
+aside .grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:16px 10px 4px;opacity:.6}
+aside .me{margin-top:auto;padding:10px;font-size:12.5px;border-top:1px solid rgba(255,255,255,.08)}
+
+/* topo */
+.topbar{display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:15px;margin:0;font-weight:650}
+.topbar .sp{flex:1}
+.timer{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:4px;padding:5px 6px 5px 12px;font-size:13px}
+.timer .dot{width:8px;height:8px;border-radius:50%;background:var(--ink3)}
+.timer.run .dot{background:var(--ok)}
+.timer b{font-variant-numeric:tabular-nums;font-weight:600;min-width:62px}
+.timer button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:3px;padding:3px 9px;cursor:pointer}
+.timer button:hover{color:var(--ink)}
+
+main{padding:20px;overflow:auto}
+
+/* contadores */
+.counts{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:16px}
+.counts div{padding:12px 16px;border-right:1px solid var(--line2)}
+.counts div:last-child{border-right:0}
+.counts b{display:block;font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.counts span{font-size:12px;color:var(--ink2)}
+.counts .bad b{color:var(--bad)}
+
+/* filtros */
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel)}
+.seg button{font:inherit;font-size:12.5px;border:0;background:transparent;color:var(--ink2);padding:5px 11px;cursor:pointer;border-right:1px solid var(--line2)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+select,input[type=search]{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+input[type=search]{width:200px}
+.bar .sp{flex:1}
+.bar .hint{font-size:12px;color:var(--ink3)}
+
+/* tabela da carteira */
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line2);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2);font-weight:600;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+th.nosort{cursor:default}
+th .arr{color:var(--ink3);font-size:10px}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--accent-soft)}
+tbody tr:last-child td{border-bottom:0}
+tr.aberta td{background:var(--ok-soft)}
+td.n{font-variant-numeric:tabular-nums;text-align:right}
+th.n{text-align:right}
+.emp b{font-weight:600}
+.emp small{display:block;color:var(--ink3);font-size:11.5px}
+.sem{display:inline-block;width:9px;height:9px;border-radius:50%}
+.prio{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}
+.prio i{display:inline-block;width:3px;height:14px;border-radius:1px}
+.tag{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:3px}
+.t-ok{color:var(--ok);background:var(--ok-soft)}
+.t-warn{color:var(--warn);background:var(--warn-soft)}
+.t-bad{color:var(--bad);background:var(--bad-soft)}
+.t-plain{color:var(--ink2);border:1px solid var(--line)}
+.zero{color:var(--ink3)}
+.mini{display:flex;gap:2px;align-items:flex-end;height:16px}
+.mini i{display:block;width:5px;background:var(--line);border-radius:1px}
+.mini i.f{background:var(--accent)}
+.foot{margin-top:10px;font-size:11.5px;color:var(--ink3);display:flex;gap:16px;flex-wrap:wrap}
+
+/* aviso de troca de empresa */
+dialog{border:1px solid var(--line);border-radius:6px;padding:0;background:var(--panel);color:var(--ink);width:380px;max-width:92vw}
+dialog::backdrop{background:rgba(10,15,20,.35)}
+dialog .hd{padding:14px 18px 6px;font-weight:650}
+dialog .bd{padding:0 18px 14px;color:var(--ink2);font-size:13px}
+dialog .ft{display:flex;flex-direction:column;gap:6px;padding:12px 18px 16px;border-top:1px solid var(--line2)}
+dialog .ft button{font:inherit;font-size:13px;padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-align:left}
+dialog .ft button.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+dialog .ft button:disabled{opacity:.4;cursor:not-allowed}
+dialog.perigo{border:2px solid var(--bad)}
+dialog.perigo .hd{color:var(--bad);background:var(--bad-soft);padding-bottom:12px;margin-bottom:10px}
+dialog.perigo .ft button.pri{background:var(--bad);border-color:var(--bad)}
+dialog .chk{display:flex;gap:8px;align-items:center;margin:0 18px 12px;padding:8px 10px;border:1px solid var(--bad);border-radius:4px;font-size:12.5px;color:var(--bad);cursor:pointer}
+dialog .chk[hidden]{display:none}
+.timer button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:5px 12px}
+.timer button.red{border-color:var(--bad);color:var(--bad);background:transparent;padding:5px 12px}
+.timer button.red:hover{background:var(--bad);color:#fff}
+dialog .ft button.red{border-color:var(--bad);color:var(--bad)}
+dialog.perigo .ft button.red{background:var(--bad);color:#fff}
+
+@media (max-width:820px){
+  body{grid-template-columns:1fr;grid-template-rows:auto 52px 1fr}
+  aside{grid-row:auto;flex-direction:row;overflow-x:auto;padding:8px;gap:2px}
+  aside .brand,aside .grp,aside .me{display:none}
+  .counts{grid-template-columns:repeat(2,1fr)}
+  main{padding:14px 16px}
+}
+</style>
+</head>
+<body>
+
+<style>
+.timer .st{font-size:11.5px;color:var(--ink3)}
+.who select{background:transparent;color:var(--side-act);border:1px solid rgba(255,255,255,.18);font-size:12.5px;padding:3px 6px;width:100%}
+.who select option{color:#16202b}
+.foot a{color:var(--accent);cursor:pointer;text-decoration:underline}
+.view{display:none}
+.view.on{display:block}
+.back{font:inherit;font-size:13px;border:0;background:none;color:var(--accent);cursor:pointer;padding:0;margin-bottom:12px}
+.stub{background:var(--panel);border:1px dashed var(--line);border-radius:4px;padding:28px;color:var(--ink3);text-align:center}
+.emphd{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.emphd h2{margin:0;font-size:18px;font-weight:650}
+.emphd span{color:var(--ink3);font-size:12.5px}
+:root{--p-edu:#6b4f9c;--p-edu-s:#efe9f7;--p-mur:#0e7c66;--p-mur-s:#e1f1ec;--p-pau:#3f5e8c;--p-pau-s:#e6ecf4}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--p-edu:#b49ae0;--p-edu-s:#2d2540;--p-mur:#4fb89c;--p-mur-s:#173129;--p-pau:#8ea8d1;--p-pau-s:#243246}}
+:root[data-theme="dark"]{--p-edu:#b49ae0;--p-edu-s:#2d2540;--p-mur:#4fb89c;--p-mur-s:#173129;--p-pau:#8ea8d1;--p-pau-s:#243246}
+.cols{display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start}
+@media (max-width:980px){.cols{grid-template-columns:1fr}}
+.emphd #eProg{font-size:12.5px;color:var(--ink2)}
+.chips{display:inline-flex;gap:4px;flex-wrap:wrap}
+.chips button{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:12px;padding:3px 10px;cursor:pointer}
+.chips button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.atual{font-size:12px;color:var(--ink3)} .atual b{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.blk{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin-bottom:14px}
+.blk.atr{border-color:var(--bad)}
+.blkhd{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);font-weight:600;padding:9px 14px;border-bottom:1px solid var(--line2)}
+.blk.atr .blkhd{color:var(--bad)}
+.tasks{list-style:none;margin:0;padding:0}
+.tasks li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line2)}
+.tasks li:last-child{border-bottom:0}
+.tasks li.feita .tn{color:var(--ink3);text-decoration:line-through}
+.tasks li.outra{opacity:.55}
+.ck{width:18px;height:18px;border:1.5px solid var(--ink3);border-radius:3px;background:transparent;cursor:pointer;padding:0;display:grid;place-items:center;color:#fff;font-size:12px;line-height:1}
+.ck:hover{border-color:var(--ok)}
+.ck.on{background:var(--ok);border-color:var(--ok);cursor:default}
+.ck.meio{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.tn{font-size:13.5px}
+.tmeta{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;align-items:center}
+.tipo{font-size:11px;color:var(--ink3);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+.pp{font-size:11px;border-radius:3px;padding:0 6px;font-weight:600}
+.pp{color:var(--ink2);background:var(--line2)}
+.pp.Carlos{color:var(--warn);background:var(--warn-soft)} .pp.Adm{color:var(--ink2);background:var(--line2)}
+.pp.Ana{color:var(--p-edu);background:var(--p-edu-s)} .pp.Bruna{color:var(--p-mur);background:var(--p-mur-s)} .pp.Paulo{color:var(--p-pau);background:var(--p-pau-s)}
+.pp.ok::after{content:" ✓"}
+.tr{font-size:12px;color:var(--ink3);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sem-dia{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line2);font-size:13px}
+.sem-dia:last-child{border-bottom:0}
+.sem-dia b{font-weight:600}
+.sem-dia .zero{font-size:12.5px}
+.notas{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding-bottom:10px;position:sticky;top:0}
+.notas textarea{display:block;width:calc(100% - 28px);margin:10px 14px 8px;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:4px;padding:8px;background:var(--paper);color:var(--ink);resize:vertical}
+.notas button{margin:0 14px;font:inherit;font-size:12.5px;padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.notas .hint{margin:8px 14px 4px;font-size:11.5px;color:var(--ink3)}
+.notas ul{list-style:none;margin:6px 0 0;padding:0}
+.notas li{padding:8px 14px;border-top:1px solid var(--line2);font-size:13px}
+.notas li small{display:block;color:var(--ink3);font-size:11.5px;margin-bottom:2px}
+.cal{overflow:hidden}
+.calhd{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
+.calhd button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:4px;padding:2px 9px;cursor:pointer}
+.calhd b#calMes{font-size:13.5px;min-width:120px;text-align:center;text-transform:capitalize}
+.leg{font-size:11px;color:var(--ink3);display:flex;gap:4px 8px;align-items:center;flex-wrap:wrap}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:-4px}
+.leg .lv{background:var(--bad)} .leg .lh{background:var(--accent)} .leg .lf{background:var(--ink3)} .leg .lc{background:var(--ok)}
+.leg .lm,.leg .le{margin-right:-4px;color:var(--accent)}
+.calgrid{display:grid;grid-template-columns:.45fr repeat(5,1fr) .45fr}
+.calgrid .dow{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);padding:5px 6px;border-bottom:1px solid var(--line2)}
+.calgrid .c{min-height:84px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:4px 5px;font-size:11px;overflow:hidden}
+.calgrid .c:nth-child(7n){border-right:0}
+.calgrid .c.fora{background:var(--paper);opacity:.55}
+.calgrid .c.fds{background:var(--paper)}
+.calgrid .c.hoje{box-shadow:inset 0 0 0 2px var(--accent)}
+.calgrid .n{font-size:11.5px;color:var(--ink2);font-weight:600;margin-bottom:2px}
+.calgrid .c.hoje .n{color:var(--accent)}
+.ev{display:block;border-radius:3px;padding:1px 4px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:3px solid var(--ink3);background:var(--line2);color:var(--ink);cursor:default}
+.ev.v{border-left-color:var(--bad);background:var(--bad-soft)}
+.ev.h{border-left-color:var(--accent);background:var(--accent-soft)}
+.ev.ok{border-left-color:var(--ok);background:var(--ok-soft);color:var(--ink3)}
+.ev.dia{border-left-color:transparent;background:transparent;color:var(--ink3);padding-left:0}
+.ev.dia.v{color:var(--bad)}
+.ev.hl{outline:2px solid var(--accent);outline-offset:-1px}
+.ev .k{font-weight:700;margin-right:3px;color:var(--accent)}
+.addp{font:inherit;font-size:12.5px;border:1px dashed var(--accent);color:var(--accent);background:transparent;border-radius:4px;padding:4px 10px;cursor:pointer}
+.novo{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--accent);border-radius:4px;padding:10px 12px;margin-bottom:14px}
+.novo[hidden]{display:none}
+.novo input{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.novo #pNome{flex:1;min-width:240px}
+.novo label{font-size:12.5px;color:var(--ink2);display:flex;gap:6px;align-items:center}
+.novo button{font:inherit;font-size:12.5px;padding:5px 12px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--ink2);cursor:pointer}
+.novo button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.novo .hint{flex-basis:100%;font-size:11.5px;color:var(--ink3)}
+.criada{font-size:11px;color:var(--ink3)}
+.prog{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.prog .bar2{flex:1;height:7px;background:var(--line2);border-radius:4px;overflow:hidden}
+.prog .bar2 i{display:block;height:100%;background:var(--ok)}
+tr.exp td{background:var(--paper);padding:0}
+tr.exp:hover td{background:var(--paper)}
+.det{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.det > div{padding:10px 14px;border-right:1px solid var(--line2);white-space:normal}
+.det > div:last-child{border-right:0}
+.det h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+.det h4.v{color:var(--bad)} .det h4.c{color:var(--ok)}
+.det ul{list-style:none;margin:0;padding:0}
+.det li{padding:3px 0;font-size:12.5px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.det li .dt{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.det .abrir{font:inherit;font-size:12px;margin:0 14px 10px;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:4px;padding:4px 10px;cursor:pointer}
+@media (max-width:980px){.det{grid-template-columns:1fr 1fr}}
+.tn[data-det]{cursor:pointer}
+.tn[data-det]:hover{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.ckc{font-size:11px;color:var(--ink3);font-weight:400}
+.ck.alheia{border-style:dashed;cursor:not-allowed;opacity:.5}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100vw;background:var(--panel);border-left:1px solid var(--line);z-index:20;overflow:auto;box-shadow:-8px 0 24px rgba(0,0,0,.08)}
+.drawer[hidden]{display:none}
+.dhd{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel)}
+.dnome{font-size:15px;font-weight:650;margin-bottom:6px}
+.dhd button{font-size:20px;line-height:1;border:0;background:none;color:var(--ink3);cursor:pointer}
+.dmsg{margin:12px 18px 0;padding:8px 10px;border-radius:4px;background:var(--warn-soft);color:var(--warn);font-size:12.5px}
+.dsec{padding:12px 18px;border-bottom:1px solid var(--line2);font-size:13px}
+.dsec h5{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+.dsec .lin{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.dsec .lin span:first-child{color:var(--ink3)}
+.dck{list-style:none;margin:0;padding:0}
+.dck li{display:flex;gap:8px;align-items:center;padding:4px 0}
+.dck input{width:15px;height:15px;accent-color:var(--ok)}
+.dck li.on span{color:var(--ink3);text-decoration:line-through}
+.dsec textarea{width:100%;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:4px;padding:7px;background:var(--paper);color:var(--ink);resize:vertical}
+.dbtn{font:inherit;font-size:12.5px;margin-top:6px;padding:5px 12px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.dbtn.sec{background:transparent;color:var(--accent)}
+.dbtn:disabled{opacity:.4;cursor:not-allowed}
+.dobs{list-style:none;margin:8px 0 0;padding:0}
+.dobs li{padding:5px 0;border-top:1px solid var(--line2);font-size:12.5px}
+.dobs li small{display:block;color:var(--ink3);font-size:11px}
+.rsp{display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap}
+.rsp .st{font-size:12px;color:var(--ink3)}
+.rsp select{font:inherit;font-size:12px;padding:2px 6px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.dfoot{padding:14px 18px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 6px}
+.dcampo{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink3);border:1px solid var(--line2);border-radius:4px;padding:8px}
+.dcampo input{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.dcampo b{font-size:13px;color:var(--ink);font-weight:600}
+.dcampo small{font-size:11px;color:var(--ink3)}
+.dadd{display:flex;gap:6px;margin-top:8px}
+.dadd[hidden]{display:none}
+.dadd input{flex:1;font:inherit;font-size:12.5px;padding:5px 8px;border:1px dashed var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.dadd button{font:inherit;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:4px;padding:4px 10px;cursor:pointer}
+.feed.ent li{grid-template-columns:52px 68px 72px 110px 1fr}
+.custom{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink2)}
+.custom[hidden]{display:none}
+.custom input{font:inherit;font-size:12.5px;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+.graf{display:grid;grid-template-columns:1fr 1.25fr;gap:14px;margin-top:16px}
+.graf > .blk{min-width:0;margin-bottom:0}
+@media (max-width:1100px){.graf{grid-template-columns:1fr}}
+.blkhd .sub{text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink3)}
+.g1{display:flex;align-items:flex-end;gap:6px;height:190px;padding:14px 14px 0;overflow-x:auto}
+.gc{flex:1;min-width:18px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.gtrack{width:100%;max-width:34px;background:var(--line2);border-radius:4px 4px 0 0;display:flex;align-items:flex-end;overflow:hidden;min-height:2px}
+.gfill{width:100%;background:var(--ok);border-radius:4px 4px 0 0}
+.gv{font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gx{font-size:10.5px;color:var(--ink3);padding:4px 0 8px;font-variant-numeric:tabular-nums;border-top:1px solid var(--line);width:100%;text-align:center}
+.gc.hj .gx{color:var(--accent);font-weight:700}
+.gc:hover .gtrack{outline:2px solid var(--accent);outline-offset:1px}
+.gleg{display:flex;gap:14px;padding:8px 14px 10px;font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line2)}
+.gleg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.gleg .lp{background:var(--line2);border:1px solid var(--line)} .gleg .lc{background:var(--ok)}
+.gleg .lb{background:var(--accent)} .gleg .lt{width:2px;height:12px;background:var(--ink);border-radius:0}
+.g2{padding:10px 14px 6px}
+.gr{display:grid;grid-template-columns:minmax(110px,170px) minmax(60px,1fr) auto;gap:10px;align-items:center;padding:5px 0}
+.gn{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gn small{color:var(--ink3);font-size:11px}
+.gbar{position:relative;height:12px;background:var(--line2);border-radius:0 4px 4px 0}
+.gbar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:0 4px 4px 0}
+.gbar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);box-shadow:0 0 0 2px var(--panel)}
+.gr:hover .gbar{outline:2px solid var(--accent-soft);outline-offset:2px}
+.gval{font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.gd{font-size:11px;color:var(--ink3);margin-left:4px}
+.gd.up::first-letter{color:var(--warn)} .gd.dn::first-letter{color:var(--ok)}
+.bsen{font:inherit;font-size:12.5px;border:1px solid var(--accent);color:var(--accent);background:var(--panel);border-radius:4px;padding:4px 12px;cursor:pointer;margin-left:10px}
+.bsen:hover{background:var(--accent);color:#fff}
+.sbusca{flex:1;min-width:180px;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.acc{padding:12px 18px;border-bottom:1px solid var(--line2)}
+.acc .ah{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.acc .ah b{font-size:13.5px;flex:1}
+.acc .ah a{font-size:12px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:2px 8px}
+.acc .ah a:hover{border-color:var(--accent)}
+.acc .cp{display:grid;grid-template-columns:62px 1fr auto auto;gap:6px;align-items:center;padding:3px 0;font-size:12.5px}
+.acc .cp span:first-child{color:var(--ink3);font-size:11.5px}
+.acc .cp code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var(--paper);border:1px solid var(--line2);border-radius:3px;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc .cp button{font:inherit;font-size:11.5px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:4px;padding:2px 8px;cursor:pointer}
+.acc .cp button:hover{color:var(--accent);border-color:var(--accent)}
+.acc .ob{margin-top:6px;font-size:12px;color:var(--ink2);background:var(--warn-soft);border-radius:4px;padding:6px 8px}
+.acc .adm{margin-top:6px;display:flex;gap:6px}
+.acc .adm button{font:inherit;font-size:11.5px;border:0;background:none;color:var(--ink3);text-decoration:underline;cursor:pointer;padding:0}
+.snovo{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.snovo[hidden]{display:none}
+.snovo label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--ink2)}
+.snovo input,.snovo select{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.snovo .sg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:12.5px;padding:7px 14px;border-radius:4px;z-index:40}
+.toast[hidden]{display:none}
+.navb{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:4px;padding:3px 10px;cursor:pointer}
+.atit{font-size:14px;min-width:150px;text-align:center;text-transform:capitalize}
+.calgrid.modo-semana{grid-template-columns:repeat(7,minmax(0,1fr))}
+.calgrid.modo-semana .c{min-height:380px}
+.atit.semana{text-transform:none}
+.ev .cli{font-weight:700;color:var(--ink2);margin-right:3px}
+.ev.mais{background:transparent;border-left-color:transparent;color:var(--accent);padding-left:0}
+.semcli{font-size:11px;font-weight:700;color:var(--ink2);margin:6px 0 1px;border-top:1px solid var(--line2);padding-top:4px}
+.drawer.largo{width:560px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.fg label,.flist label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--ink2)}
+.fg input,.fg select,.flist input,#ficha textarea{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);width:100%}
+#ficha textarea{resize:vertical}
+.fg input:disabled,.fg select:disabled,.flist input:disabled{background:var(--line2);color:var(--ink2);cursor:not-allowed}
+.lock{display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);background:var(--warn-soft);border-radius:3px;padding:0 5px;margin-left:4px;vertical-align:1px}
+label.sens::after{content:"só Adm";font-size:10px;font-weight:600;text-transform:uppercase;color:var(--warn);order:-1;align-self:flex-start}
+.flist .row{display:grid;grid-template-columns:1.4fr 1fr 1fr 24px;gap:6px;align-items:end;margin-bottom:6px}
+.flist .row button{border:0;background:none;color:var(--ink3);font-size:16px;cursor:pointer;padding:0 0 6px}
+.fadd{font:inherit;font-size:12px;border:1px dashed var(--line);background:transparent;color:var(--accent);border-radius:4px;padding:3px 10px;cursor:pointer}
+.fequipe{display:flex;gap:6px;flex-wrap:wrap}
+.fequipe label{display:flex;gap:5px;align-items:center;font-size:12.5px;border:1px solid var(--line);border-radius:4px;padding:4px 8px;cursor:pointer}
+.dbtn.perigo{background:transparent;border-color:var(--bad);color:var(--bad)}
+#csRows td{white-space:nowrap}
+#csRows td:nth-child(2){white-space:normal;min-width:200px}
+#csRows code{max-width:160px;display:inline-block;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+#csRows code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--paper);border:1px solid var(--line2);border-radius:3px;padding:1px 6px}
+.mb{font:inherit;font-size:11.5px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:4px;padding:1px 7px;cursor:pointer;margin-left:4px}
+.mb:hover{color:var(--accent);border-color:var(--accent)}
+.mb.lk{border:0;text-decoration:underline;color:var(--ink3);padding:0}
+.velha{color:var(--warn);font-weight:600}
+.feed.cons li{grid-template-columns:1fr;gap:0;padding:6px 12px}
+.feed.cons small{color:var(--ink3);font-size:11px}
+#rForm label[hidden]{display:none}
+.dck li .rm{margin-left:auto;border:0;background:none;color:var(--ink3);cursor:pointer;font-size:15px}
+tr.pausada td{opacity:.55}
+.ocup{display:flex;align-items:center;gap:8px;font-size:12px;font-variant-numeric:tabular-nums;min-width:200px}
+.ocup .bar2{flex:1;height:7px;background:var(--line2);border-radius:4px;overflow:hidden}
+.ocup .bar2 i{display:block;height:100%;background:var(--accent)}
+.matriz{border-collapse:collapse;width:100%;font-size:12px}
+.matriz th,.matriz td{padding:6px 10px;border-bottom:1px solid var(--line2);text-align:center;white-space:nowrap}
+.matriz td:first-child,.matriz th:first-child{text-align:left}
+.matriz .s{color:var(--ok);font-weight:700} .matriz .n{color:var(--ink3)} .matriz .p{color:var(--warn)}
+.psel{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+.psel.s{color:var(--ok);font-weight:600} .psel.n{color:var(--ink3)} .psel.p{color:var(--warn)}
+.vlist{list-style:none;margin:0 0 8px;padding:0}
+.vlist li{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line2);font-size:13px}
+.vlist li .zero{font-size:11.5px;flex:1}
+.vlist li button{border:0;background:none;color:var(--ink3);font-size:16px;cursor:pointer}
+#cAddCli{font:inherit;font-size:12.5px;padding:4px 8px;border:1px dashed var(--line);border-radius:4px;background:var(--paper);color:var(--accent)}
+.tema{display:flex;margin-top:10px;border:1px solid rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+.tema button{flex:1;font:inherit;font-size:11px;border:0;background:transparent;color:var(--side-ink);padding:4px 0;cursor:pointer}
+.tema button.on{background:rgba(255,255,255,.12);color:var(--side-act)}
+.feed{list-style:none;margin:0;padding:6px 0;background:var(--panel);border:1px solid var(--line);border-radius:4px;font-size:13px}
+.feed li{display:grid;grid-template-columns:86px 64px 70px 72px 120px 1fr;gap:10px;padding:6px 14px;border-bottom:1px solid var(--line2);align-items:baseline}
+.feed li:last-child{border-bottom:0}
+.feed .d,.feed .c{font-variant-numeric:tabular-nums;color:var(--ink3);font-size:12.5px}
+.feed .c{color:var(--ink2);font-weight:600}
+.feed .e{font-weight:600;font-size:12.5px}
+.feed .tar{color:var(--ink)} .feed .ini{color:var(--ok)} .feed .pau{color:var(--warn)} .feed .enc{color:var(--accent)} .feed .rev{color:var(--bad)} .feed .fec{color:var(--ink3)}
+.feed .vazio{display:block;text-align:center;color:var(--ink3);padding:18px}
+@media (max-width:820px){.feed li{grid-template-columns:1fr 1fr;gap:2px 10px}}
+tbody.static tr{cursor:default}
+</style>
+
+<aside>
+  <div class="brand">Central BPO<small>Effective</small></div>
+  <a href="#" data-view="home" class="on">Home</a>
+  <a href="#" data-view="clientes">Tarefas</a>
+  <a href="#" data-view="agenda">Calendário</a>
+  <a href="#" data-view="crono">Histórico</a>
+  <div id="cad">
+    <div class="grp">Cadastros</div>
+    <a href="#" data-view="cadcli">Clientes</a>
+    <a href="#" data-view="cadsen">Senhas</a>
+    <a href="#" data-view="cadtar">Tarefas</a>
+    <a href="#" data-view="cadcol">Colaboradores</a>
+  </div>
+  <div class="me">
+    <div class="who"><select id="user" title="No app real vem do login"></select></div>
+    <div id="papel" style="font-size:11px;opacity:.7;margin-top:4px"></div>
+    <div class="tema" id="fonte" title="Tamanho do texto"><button data-z="1">A</button><button data-z="1.15" style="font-size:12.5px">A</button><button data-z="1.3" style="font-size:14px">A</button><button data-z="1.45" style="font-size:15.5px">A</button></div>
+    <div class="tema" id="tema" title="Tema"><button data-t="light">Claro</button><button data-t="dark">Escuro</button><button data-t="">Auto</button></div>
+  </div>
+</aside>
+
+<header class="topbar">
+  <h1 id="titulo">Home</h1>
+  <span style="font-size:12.5px;color:var(--ink3)" id="hoje"></span>
+  <span class="sp"></span>
+  <div class="timer" id="timer">
+    <span class="dot"></span>
+    <span id="tEmp">Nenhuma empresa aberta</span>
+    <span class="st" id="tSt"></span>
+    <b id="tVal">00:00:00</b>
+    <button id="tPau" class="pri" hidden>Pausar empresa</button>
+    <button id="tFim" class="red" hidden>Finalizar empresa</button>
+    <span class="st" id="tEnc" hidden></span>
+  </div>
+</header>
+
+<main>
+  <!-- ========== CLIENTES ========== -->
+  <section class="view" id="v-clientes">
+    <div class="counts" id="counts"></div>
+    <div class="bar">
+      <div class="seg" id="segSit">
+        <button data-v="" class="on">Todos</button>
+        <button data-v="aberto">Em aberto</button>
+        <button data-v="atrasada">Com atrasada</button>
+        <button data-v="concluida">Concluídos</button>
+      </div>
+      <span class="sp"></span>
+      <input type="search" id="q" placeholder="Buscar cliente">
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th class="nosort" style="width:28px"></th>
+          <th data-k="nome">Cliente <span class="arr"></span></th>
+          <th data-k="prioN">Prioridade <span class="arr"></span></th>
+          <th data-k="hoje" class="n">Tarefas hoje <span class="arr"></span></th>
+          <th data-k="atras" class="n">Atrasadas <span class="arr"></span></th>
+          <th data-k="sitN">Hoje <span class="arr"></span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="foot">
+      <span><span class="sem" style="background:var(--ok)"></span> concluído hoje</span>
+      <span><span class="sem" style="background:var(--warn)"></span> em aberto</span>
+      <span><span class="sem" style="background:var(--bad)"></span> tem atrasada</span>
+      <span>Mostra só os clientes vinculados a quem está logado.</span>
+      <span>Dados fictícios · <a id="sim22">simular fechamento das 22h</a></span>
+    </div>
+  </section>
+
+  <!-- ========== EMPRESA (bloco 2) ========== -->
+  <section class="view" id="v-empresa">
+    <button class="back" id="voltar">← Voltar à lista de clientes</button>
+    <div class="emphd"><h2 id="eNome"></h2><span id="eRazao"></span><span class="sp" style="flex:1"></span><span id="eProg"></span>
+      <button class="bsen" id="bSenhas">Senhas e acessos</button></div>
+    <div class="cols">
+      <div>
+        <div class="bar">
+          <div class="seg" id="segMinhas">
+            <button data-v="" class="on">Todas</button>
+            <button data-v="1">Só as minhas</button>
+          </div>
+          <div class="chips" id="chipsTipo"></div>
+          <span class="sp"></span>
+          <button class="addp" id="pAbrir">+ Tarefa pontual</button>
+          <span class="atual" id="eAtual" title="Tempo desde a última tarefa concluída (ou desde que entrou)">tarefa atual <b>00:00:00</b></span>
+        </div>
+        <form class="novo" id="pForm" hidden>
+          <input id="pNome" placeholder="O que precisa fazer? Ex.: ligar para o banco sobre a tarifa" required>
+          <label>para <input type="date" id="pData" required></label>
+          <button type="submit" class="pri">Criar</button>
+          <button type="button" id="pCanc">Cancelar</button>
+          <span class="hint">Fica com você como responsável. Se virar rotina, o Adm cadastra nas Tarefas.</span>
+        </form>
+        <div id="listaAtras"></div>
+        <div class="blk">
+          <div class="blkhd">Hoje</div>
+          <ul class="tasks" id="listaHoje"></ul>
+        </div>
+        <div class="blk">
+          <div class="blkhd">Resto da semana</div>
+          <div id="semana"></div>
+        </div>
+        <div class="blk cal">
+          <div class="calhd">
+            <button id="calAnt" title="Mês anterior">‹</button>
+            <b id="calMes"></b>
+            <button id="calProx" title="Próximo mês">›</button>
+            <button id="calHoje">Hoje</button>
+            <span class="sp" style="flex:1"></span>
+            <span class="leg"><i class="lv"></i>vencida <i class="lh"></i>hoje <i class="lf"></i>futura <i class="lc"></i>concluída <b class="lm">◎</b>meta <b class="le">▸</b>entrega</span>
+          </div>
+          <div class="calgrid" id="calGrid"></div>
+        </div>
+      </div>
+      <div class="notas">
+        <div class="blkhd">Anotações do dia</div>
+        <textarea id="nTxt" rows="4" placeholder="Ex.: notas da Alfa com erro, repassar ao gestor da academia"></textarea>
+        <button id="nSalvar">Salvar anotação</button>
+        <p class="hint">Vai no resumo por e-mail para Bruna e Paulo às 12h30 e às 17h.</p>
+        <ul id="nLista"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== HOME (painel da operação) ========== -->
+  <section class="view on" id="v-home">
+    <div class="counts" id="tCounts"></div>
+    <div class="bar">
+      <div class="seg" id="tPer">
+        <button data-v="hoje" class="on">Hoje</button>
+        <button data-v="semana">Esta semana</button>
+        <button data-v="mes">Este mês</button>
+        <button data-v="custom">Personalizado</button>
+      </div>
+      <span class="custom" id="tCustom" hidden><input type="date" id="tDe"> a <input type="date" id="tAte"></span>
+      <div class="seg" id="tMinhas"><button data-v="" class="on">Todas</button><button data-v="1">Só as minhas</button></div>
+      <div class="chips" id="tTipos"></div>
+      <span class="sp"></span>
+      <span class="hint" id="tPerTxt"></span>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th class="nosort">Cliente</th>
+          <th class="nosort n">Atrasadas</th>
+          <th class="nosort n">Hoje</th>
+          <th class="nosort n">Previstas</th>
+          <th class="nosort n">Concluídas</th>
+          <th class="nosort" style="width:180px">Andamento do período</th>
+          <th class="nosort"></th>
+        </tr></thead>
+        <tbody id="tRows" class="static"></tbody>
+      </table>
+    </div>
+    <div class="foot"><span>Atrasadas contam qualquer data anterior a hoje. Andamento = concluídas ÷ total do período.</span></div>
+    <div class="graf">
+      <div class="blk"><div class="blkhd">Entregas por dia <span class="sub" id="g1sub"></span></div><div id="g1" class="g1"></div>
+        <div class="gleg"><span><i class="lp"></i>previstas</span><span><i class="lc"></i>concluídas</span></div></div>
+      <div class="blk"><div class="blkhd">Tempo médio por tarefa · período × média histórica</div><div id="g2" class="g2"></div>
+        <div class="gleg"><span><i class="lb"></i>média no período</span><span><i class="lt"></i>média histórica (90 dias antes)</span></div></div>
+    </div>
+  </section>
+
+  <!-- ========== CADASTRO DE CLIENTES ========== -->
+  <section class="view" id="v-cadcli">
+    <div class="bar">
+      <div class="seg" id="ccSit"><button data-v="" class="on">Todos</button><button data-v="Ativa">Ativos</button><button data-v="Implantação">Implantação</button><button data-v="Bloqueada">Bloqueados</button><button data-v="Encerrada">Encerrados</button></div>
+      <span class="sp"></span>
+      <input type="search" id="ccQ" placeholder="Buscar por nome, razão social ou CNPJ">
+      <button class="dbtn" id="ccNovo" style="margin:0">+ Novo cliente</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Cliente</th><th class="nosort">CNPJ</th><th class="nosort">Situação</th><th class="nosort n">Honorário mensal</th><th class="nosort">Equipe Effective</th><th class="nosort">Grupo principal</th></tr></thead>
+      <tbody id="ccRows"></tbody>
+    </table></div>
+    <div class="foot"><span>Dados fictícios. Campos com <span class="lock">só Adm</span> só o administrador altera; os demais pedem ao Adm. Toda alteração vai para o histórico.</span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE SENHAS (todos os clientes) ========== -->
+  <section class="view" id="v-cadsen">
+    <div class="bar">
+      <select id="csEmp"><option value="">Todos os clientes</option></select>
+      <div class="chips" id="csTipos"></div>
+      <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="csVelhas"> sem troca há mais de 180 dias</label>
+      <span class="sp"></span>
+      <input type="search" id="csQ" placeholder="Buscar sistema, usuário, observação">
+      <button class="dbtn" id="csNovoAbrir" style="margin:0">+ Novo acesso</button>
+    </div>
+    <form class="novo" id="csNovo" hidden>
+      <select id="csNEmp" required></select>
+      <input id="csNSis" placeholder="Sistema (ex.: Banco Itaú)" required>
+      <select id="csNTipo"><option>Banco</option><option>Plataforma</option><option>E-mail</option><option>Governo</option><option>Outro</option></select>
+      <input id="csNLink" placeholder="Link">
+      <input id="csNUsu" placeholder="Usuário">
+      <input id="csNSen" type="password" placeholder="Senha">
+      <input id="csNObs" placeholder="Observações de acesso" style="flex:1;min-width:200px">
+      <button type="submit" class="pri">Salvar</button><button type="button" id="csNovoCanc">Cancelar</button>
+    </form>
+    <div class="cols" style="grid-template-columns:minmax(0,1fr)">
+      <div class="tbl"><table>
+        <thead><tr><th class="nosort">Cliente</th><th class="nosort">Acesso</th><th class="nosort">Usuário</th><th class="nosort">Senha</th><th class="nosort">Última troca</th><th class="nosort"></th></tr></thead>
+        <tbody id="csRows" class="static"></tbody>
+      </table></div>
+      <div class="blk"><div class="blkhd">Consultas recentes</div><ol class="feed cons" id="csCons" style="border:0"></ol></div>
+    </div>
+    <div class="foot"><span>Dados fictícios. Consulta livre; cada visualização, cópia e link aberto fica registrado. Alterar e excluir: só Adm.</span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE TAREFAS (rotinas) ========== -->
+  <section class="view" id="v-cadtar">
+    <div class="bar">
+      <select id="ctEmp"><option value="">Todos os clientes</option></select>
+      <select id="ctResp"><option value="">Todos os responsáveis</option></select>
+      <div class="chips" id="ctTipos"></div>
+      <div class="seg" id="ctAtiva"><button data-v="" class="on">Todas</button><button data-v="1">Ativas</button><button data-v="0">Pausadas</button></div>
+      <span class="sp"></span>
+      <input type="search" id="ctQ" placeholder="Buscar tarefa">
+      <button class="dbtn" id="ctNova" style="margin:0"></button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Cliente</th><th class="nosort">Tarefa</th><th class="nosort">Recorrência</th><th class="nosort">Responsáveis</th><th class="nosort n">Checklist</th><th class="nosort">Situação</th></tr></thead>
+      <tbody id="ctRows"></tbody>
+    </table></div>
+    <div class="foot"><span id="ctFoot"></span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE COLABORADORES ========== -->
+  <section class="view" id="v-cadcol">
+    <div class="bar">
+      <div class="seg" id="ccoSit"><button data-v="1" class="on">Ativos</button><button data-v="0">Inativos</button><button data-v="">Todos</button></div>
+      <span class="sp"></span>
+      <button class="dbtn" id="ccoNovo" style="margin:0"></button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Colaborador</th><th class="nosort">Papel</th><th class="nosort">Clientes</th><th class="nosort n">Rotinas</th><th class="nosort">Horas no mês × carga</th><th class="nosort">Situação</th></tr></thead>
+      <tbody id="ccoRows"></tbody>
+    </table></div>
+    <div class="blk" style="margin-top:16px"><div class="blkhd">O que cada papel pode fazer</div><div id="ccoPapeis" style="overflow:auto"></div></div>
+    <div class="foot"><span>Dados fictícios. Só o Adm cadastra colaborador, troca papel ou inativa; os demais consultam e pedem ao Adm.</span></div>
+  </section>
+
+  <!-- ========== CALENDÁRIO DA OPERAÇÃO ========== -->
+  <section class="view" id="v-agenda">
+    <div class="bar">
+      <div class="seg" id="aModo"><button data-v="mes" class="on">Mês</button><button data-v="semana">Semana</button></div>
+      <button class="navb" id="aAnt">‹</button><b id="aTit" class="atit"></b><button class="navb" id="aProx">›</button><button class="navb" id="aHoje">Hoje</button>
+      <span class="sp"></span>
+      <select id="aEmp"><option value="">Todos os clientes</option></select>
+      <select id="aResp"><option value="">Todos os responsáveis</option></select>
+      <div class="chips" id="aTipos"></div>
+    </div>
+    <div class="blk cal" id="aWrap"><div class="calgrid" id="aGrid"></div></div>
+    <div class="foot"><span>Diárias aparecem somadas por dia. ◎ meta · ▸ entrega. Clique numa tarefa para abrir o cartão.</span></div>
+  </section>
+
+  <!-- ========== CRONÔMETRO ========== -->
+  <section class="view" id="v-crono">
+    
+    <div class="bar">
+      <select id="fcUser"><option value="">Todos os colaboradores</option></select>
+      <select id="fcEmp"><option value="">Todos os clientes</option></select>
+      <label class="hint" style="display:flex;gap:6px;align-items:center">Data <input type="date" id="fcData"></label>
+      <span class="sp"></span>
+      <span class="hint" id="fcCount"></span>
+    </div>
+    <ol class="feed" id="regs"></ol>
+
+  </section>
+</main>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="dhd"><div><div class="dnome" id="dNome"></div><div class="tmeta" id="dTags"></div></div><button id="dFechar" title="Fechar">×</button></div>
+  <div class="dmsg" id="dMsg" hidden></div>
+  <div class="dsec"><h5>Datas e recorrência</h5><div id="dDatas"></div></div>
+  <div class="dsec"><h5>Responsáveis</h5><div id="dResp"></div></div>
+  <div class="dsec" id="dCkSec"><h5>Checklist <span id="dCkProg" class="ckc"></span></h5><ul class="dck" id="dCk"></ul>
+    <form class="dadd" id="dCkAdd"><input id="dCkNovo" placeholder="+ adicionar item ao checklist"><button>Adicionar</button></form></div>
+  <div class="dsec"><h5>Observações</h5>
+    <textarea id="dObsTxt" rows="2" placeholder="Escreva uma observação sobre esta tarefa"></textarea>
+    <button class="dbtn" id="dObsSalvar">Salvar observação</button>
+    <ul class="dobs" id="dObs"></ul></div>
+  <div class="dfoot" id="dFoot"></div>
+</div>
+
+<div class="drawer" id="senhas" hidden>
+  <div class="dhd"><div><div class="dnome">Senhas e acessos · <span id="sEmp"></span></div>
+    <div class="tmeta"><span class="criada">Dados fictícios de exemplo. Cada consulta fica no histórico.</span></div></div><button id="sFechar" title="Fechar">×</button></div>
+  <div class="dsec" style="display:flex;gap:6px;flex-wrap:wrap">
+    <input id="sBusca" class="sbusca" placeholder="Buscar: banco, e-mail, prefeitura…">
+    <div class="chips" id="sTipos"></div>
+  </div>
+  <div id="sLista"></div>
+  <div class="dsec">
+    <button class="dbtn sec" id="sNovoAbrir">+ Novo acesso</button>
+    <form class="snovo" id="sNovo" hidden>
+      <div class="sg"><label>Sistema<input id="nSis" required placeholder="Ex.: Banco Itaú"></label>
+        <label>Tipo<select id="nTipo"><option>Banco</option><option>Plataforma</option><option>E-mail</option><option>Governo</option><option>Outro</option></select></label></div>
+      <label>Link<input id="nLink" placeholder="https://"></label>
+      <div class="sg"><label>Usuário<input id="nUsu"></label><label>Senha<input id="nSen" type="password"></label></div>
+      <label>Observações de acesso<input id="nObs" placeholder="Ex.: token com a Ana; só em horário comercial"></label>
+      <div style="display:flex;gap:6px"><button class="dbtn" type="submit">Salvar acesso</button><button class="dbtn sec" type="button" id="sNovoCanc">Cancelar</button></div>
+    </form>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<div class="drawer largo" id="ficha" hidden>
+  <div class="dhd"><div><div class="dnome" id="fTit"></div><div class="tmeta" id="fSub"></div></div><button id="fFechar" title="Fechar">×</button></div>
+  <div class="dmsg" id="fMsg" hidden></div>
+  <form id="fForm">
+    <div class="dsec"><h5>Dados da empresa</h5>
+      <div class="fg">
+        <label>Código<input name="cod" required></label>
+        <label>Nome fantasia<input name="nome" required></label>
+        <label class="sens">Razão social<input name="razao" required></label>
+        <label class="sens">CNPJ<input name="cnpj" placeholder="00.000.000/0000-00" required></label>
+        <label>Situação<select name="status"><option>Implantação</option><option>Ativa</option><option>Bloqueada</option><option>Encerrada</option></select></label>
+        <label>Prioridade<select name="prio"><option>Alta</option><option>Normal</option><option>Baixa</option></select></label>
+        <label>Segmento<input name="segmento"></label>
+        <label>Tributação<select name="trib"><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option><option>MEI</option></select></label>
+      </div></div>
+    <div class="dsec"><h5>Contrato</h5>
+      <div class="fg">
+        <label class="sens">Honorário mensal (R$)<input name="honorario" inputmode="decimal"></label>
+        <label class="sens">Plano contratado<select name="plano"><option>Essencial</option><option>Pro</option><option>Premium</option></select></label>
+        <label>Início do contrato<input type="date" name="inicio"></label>
+        <label>Sistema financeiro<input name="sistema" placeholder="Ex.: Conta Azul Pro"></label>
+      </div></div>
+    <div class="dsec"><h5>Sócios <span class="lock">só Adm</span></h5><div id="fSocios" class="flist"></div>
+      <button type="button" class="fadd" data-add="socios">+ sócio</button></div>
+    <div class="dsec"><h5>Contatos do cliente</h5><div id="fContatos" class="flist"></div>
+      <button type="button" class="fadd" data-add="contatos">+ contato</button></div>
+    <div class="dsec"><h5>Comunicação</h5>
+      <div class="fg">
+        <label>Grupo principal (WhatsApp)<input name="grupo"></label>
+        <label>E-mail financeiro<input name="email" type="email"></label>
+      </div></div>
+    <div class="dsec"><h5>Equipe Effective atrelada</h5><div id="fEquipe" class="fequipe"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Quem está marcado vê o cliente na aba Tarefas.</div></div>
+    <div class="dsec"><h5>Endereço</h5>
+      <div class="fg"><label style="grid-column:1/-1">Rua, número, bairro<input name="end"></label>
+        <label>Cidade / UF<input name="cidade"></label><label>CEP<input name="cep"></label></div></div>
+    <div class="dsec"><h5>Particularidades do cliente</h5><textarea name="obs" rows="3" placeholder="Ex.: pedidos de NF chegam sem centro de custo; fechamento de caixa quinzenal"></textarea></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="fSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="fCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="fEncerrar">Encerrar cliente</button>
+    </div>
+  </form>
+</div>
+
+<div class="drawer largo" id="rotF" hidden>
+  <div class="dhd"><div><div class="dnome" id="rTit"></div><div class="tmeta" id="rSub"></div></div><button id="rFechar" title="Fechar">×</button></div>
+  <div class="dmsg" id="rMsg" hidden></div>
+  <form id="rForm">
+    <div class="dsec"><h5>Tarefa</h5>
+      <div class="fg">
+        <label style="grid-column:1/-1">Nome da tarefa<input name="nome" required placeholder="Ex.: Conciliar banco"></label>
+        <label>Tipo<select name="tipo"><option value="Diário">Diária (seg a sex)</option><option value="Semanal">Semanal</option><option value="Quinzenal">Quinzenal (a cada 15 dias)</option><option value="Mensal">Mensal</option></select></label>
+        <label data-so="Semanal">Dia da semana<select name="diaSem"><option value="1">segunda</option><option value="2">terça</option><option value="3">quarta</option><option value="4">quinta</option><option value="5">sexta</option></select></label>
+        <label data-so="Mensal">Dia da entrega<input type="number" name="dia" min="1" max="31"></label>
+        <label data-so="Mensal">Dia da meta (opcional)<input type="number" name="meta" min="1" max="31" placeholder="pronto até"></label>
+        <label data-so="Quinzenal" style="grid-column:1/-1;font-size:12px;color:var(--ink3)">Gera a cada 15 dias contando da data "Vale a partir de". Se cair no fim de semana, vai para a segunda.</label>
+        <label>Vale a partir de<input type="date" name="inicio" required></label>
+        <label>Até (opcional)<input type="date" name="fim"></label>
+      </div></div>
+    <div class="dsec" id="rCliSec"><h5>Clientes</h5><div class="fequipe" id="rClis"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Na criação dá para aplicar a vários clientes de uma vez: vira uma rotina por cliente.</div></div>
+    <div class="dsec"><h5>Responsáveis</h5><div class="fequipe" id="rResp"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Responsáveis = quem pode executar. Analista, supervisor, gestor e Adm podem executar qualquer uma.</div></div>
+    <div class="dsec"><h5>Checklist padrão</h5><ul class="dck" id="rCk"></ul>
+      <div class="dadd"><input id="rCkNovo" placeholder="+ item do checklist"><button type="button" id="rCkAdd">Adicionar</button></div></div>
+    <div class="dsec"><label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="ativa"> Rotina ativa (gera tarefas)</label></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="rSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="rCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="rExcluir">Excluir rotina</button>
+    </div>
+  </form>
+</div>
+
+<div class="drawer" id="colF" hidden>
+  <div class="dhd"><div><div class="dnome" id="cTit"></div><div class="tmeta" id="cSub"></div></div><button id="cFechar" title="Fechar">×</button></div>
+  <div class="dmsg" id="cMsg" hidden></div>
+  <form id="cForm">
+    <div class="dsec"><h5>Dados</h5><div class="fg">
+      <label>Nome<input name="nome" required></label>
+      <label>E-mail de login<input name="email" type="email" required></label>
+      <label>Papel<select name="papel"></select></label>
+      <label>Carga horária (h/mês)<input name="carga" type="number" min="0" max="260"></label>
+      <label>Início<input name="inicio" type="date"></label>
+    </div></div>
+    <div class="dsec" id="cSenSec"><h5>Senha de acesso ao sistema</h5>
+      <div id="cSenInfo" style="font-size:12.5px;color:var(--ink2)"></div>
+      <div class="dadd" id="cSenBox" hidden><input id="cSenNova" placeholder="Nova senha (mín. 8 caracteres)"><button type="button" id="cSenGerar">Gerar</button><button type="button" id="cSenCopiar">Copiar</button></div>
+      <button type="button" class="dbtn sec" id="cSenRedef">Redefinir senha</button></div>
+    <div class="dsec"><h5>Clientes vinculados</h5><div id="cClis"></div>
+      <div class="hint" id="cCliHint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Vê esses clientes na aba Tarefas.</div></div>
+    <div class="dsec" id="cResumo"></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="cSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="cCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="cInativar"></button>
+    </div>
+  </form>
+</div>
+
+<dialog id="dlg">
+  <div class="hd" id="dlgHd"></div>
+  <div class="bd" id="dlgTxt"></div>
+  <div class="ft" id="dFt"></div>
+</dialog>
+
+<script>
+/* ================= dados fictícios ================= */
+/* Papéis e permissões (no app real: login + RLS por papel) */
+/* O papel define as permissões. Trocar o papel de alguém troca o que ela pode fazer. */
+const PAPEIS = { "Estagiária":{}, "Analista financeira":{}, "Supervisor":{}, "Gestor financeiro":{}, "Administrador":{} };
+/* Matriz de permissões por papel (no app real: tabela permissoes_papel). O Adm edita na tela de Colaboradores.
+   s = faz · n = não faz · p = pede ao Adm. Administrador é fixo em "s". */
+const PERM_LINHAS = [
+  { k:"ver_todos_clientes",  t:"Ver todos os clientes (não só os vinculados)", op:["s","n"] },
+  { k:"tipos_tarefa",        t:"Tarefas que vê", op:["todas","mensais e pontuais"] },
+  { k:"concluir_outra",      t:"Concluir tarefa de outra pessoa", op:["s","n"] },
+  { k:"transferir",          t:"Transferir responsável", op:["s","n"] },
+  { k:"alterar_datas",       t:"Alterar datas da tarefa", op:["s","n"] },
+  { k:"ver_registros_todos", t:"Ver registros de tempo de todos", op:["s","n"] },
+  { k:"senha_cadastrar",     t:"Cadastrar senha / acesso", op:["s","p","n"] },
+  { k:"senha_alterar",       t:"Alterar / excluir senha", op:["s","p","n"] },
+  { k:"cliente_cadastrar",   t:"Cadastrar cliente e editar dados gerais", op:["s","p","n"] },
+  { k:"cliente_sensivel",    t:"Editar dados sensíveis / encerrar cliente", op:["s","p","n"] },
+  { k:"rotina",              t:"Cadastrar / alterar rotina de tarefa", op:["s","p","n"] },
+  { k:"colaborador",         t:"Cadastrar colaborador / trocar papel", op:["s","p","n"] }
+];
+const base = (o) => Object.assign({ ver_todos_clientes:"n", tipos_tarefa:"todas", concluir_outra:"n", transferir:"n", alterar_datas:"n", ver_registros_todos:"n",
+  senha_cadastrar:"s", senha_alterar:"p", cliente_cadastrar:"s", cliente_sensivel:"p", rotina:"p", colaborador:"p" }, o);
+const PERM = {
+  "Estagiária":          base({}),
+  "Analista financeira": base({ concluir_outra:"s", transferir:"s", alterar_datas:"s" }),
+  "Supervisor":          base({ concluir_outra:"s", transferir:"s", alterar_datas:"s", ver_registros_todos:"s" }),
+  "Gestor financeiro":   base({ ver_todos_clientes:"s", tipos_tarefa:"mensais e pontuais", concluir_outra:"s", transferir:"s", alterar_datas:"s" }),
+  "Administrador":       Object.fromEntries(PERM_LINHAS.map(l => [l.k, l.k === "tipos_tarefa" ? "todas" : "s"]))
+};
+/* os "atalhos" da pessoa leem a matriz na hora: mudou a matriz, mudou a permissão */
+function comPapel(o){
+  Object.defineProperties(o, {
+    tudo:           { get(){ return this.papel === "Administrador"; } },
+    todosClientes:  { get(){ return PERM[this.papel].ver_todos_clientes === "s"; } },
+    todosRegistros: { get(){ return PERM[this.papel].ver_registros_todos === "s"; } },
+    tipos:          { get(){ return PERM[this.papel].tipos_tarefa === "mensais e pontuais" ? ["Mensal","Pontual"] : null; } },
+    hier:           { get(){ return PERM[this.papel].transferir === "s"; } }
+  });
+  return o;
+}
+const verTodosPapel = papel => papel === "Administrador" || PERM[papel].ver_todos_clientes === "s";
+const PESSOAS = {};
+[["Ana","Estagiária",120,"ana@effective-exemplo.com.br"],["Bruna","Analista financeira",176,"bruna@effective-exemplo.com.br"],
+ ["Paulo","Supervisor",176,"paulo@effective-exemplo.com.br"],["Carlos","Gestor financeiro",176,"carlos@effective-exemplo.com.br"],
+ ["Adm","Administrador",0,"adm@effective-exemplo.com.br"]].forEach(([n, papel, carga, email]) =>
+  PESSOAS[n] = comPapel({ papel, carga, email, ativo:true, inicio:"2025-01-06" }));
+const USERS = Object.keys(PESSOAS);
+const TODOS = ["Ana","Bruna","Paulo"];
+const P = u => PESSOAS[u];
+const veTodosClientes = u => P(u).tudo || P(u).todosClientes;
+const veTodosRegistros = u => P(u).tudo || P(u).todosRegistros;
+const veTarefa = (t, u) => P(u).tudo || !P(u).tipos || P(u).tipos.includes(t.tipo);
+/* Responsáveis = quem pode trabalhar na tarefa. Analista, supervisor, gestor e Adm mexem em qualquer uma.
+   A estagiária só mexe nas que estão com ela. Uma conclusão fecha a tarefa. */
+const perm = (u, k) => P(u).tudo ? "s" : PERM[P(u).papel][k];
+const podeF = (u, k) => perm(u, k) === "s";
+const podeConcluir = (u, t) => t.resp.includes(u) || podeF(u, "concluir_outra");
+
+/* Ações nos cadastros. "adm" = só o administrador faz direto; os demais pedem (solicitação → relatório diário do Adm → aprova ou recusa).
+   Toda inclusão, alteração e exclusão vai para a auditoria: quem, quando, o quê, antes e depois. */
+const ACOES = {
+  consultar:                "todos",
+  cadastrar_cliente:        "todos",
+  editar_dados_gerais:      "todos",   // contatos, endereço, grupo, observações
+  editar_dados_sensiveis:   "adm",     // CNPJ, razão social, honorário, sócios
+  encerrar_cliente:         "adm",
+  excluir_cliente:          "adm",
+  cadastrar_senha:          "todos",
+  revelar_senha:            "todos",   // cada revelação fica registrada
+  alterar_senha:            "adm",
+  excluir_senha:            "adm",
+  cadastrar_tarefa:         "adm",     // tarefa padrão e rotina do cliente
+  excluir_tarefa:           "adm",
+  cadastrar_colaborador:    "adm",
+  criar_tarefa_pontual:     "todos",   // para si mesmo; se virar rotina, o Adm cadastra
+  transferir_responsavel:   "hier"     // analista, supervisor, gestor e Adm. Estagiária não transfere
+};
+const pode = (u, acao) => acao === "transferir_responsavel" ? podeF(u, "transferir") : (ACOES[acao] === "todos" || !!P(u).tudo);   // false → vira solicitação ao Adm
+const EMPRESAS = [
+  { cod:"101", nome:"Alfa",      razao:"Academia Alfa",      prio:"Alta",   vinc:TODOS },
+  { cod:"102", nome:"Beta", razao:"Beta",          prio:"Alta",   vinc:TODOS },
+  { cod:"103", nome:"Gama",     razao:"Gama",              prio:"Normal", vinc:TODOS },
+  { cod:"104", nome:"Delta",      razao:"Delta Bijuterias",     prio:"Normal", vinc:TODOS },
+  { cod:"105", nome:"Sigma",    razao:"Sigma Conteúdo",     prio:"Normal", vinc:["Bruna","Paulo"] },
+  { cod:"106", nome:"Zeta", razao:"Zeta Serviços", prio:"Baixa",  vinc:TODOS },
+  { cod:"107", nome:"Kappa",  razao:"Kappa Joias",     prio:"Baixa",  vinc:["Paulo"] }
+];
+const PRIO = { Alta:{n:3,c:"var(--bad)"}, Normal:{n:2,c:"var(--accent)"}, Baixa:{n:1,c:"var(--ink3)"} };
+EMPRESAS.forEach(e => { e.prioN = PRIO[e.prio].n; e.vinc = [...e.vinc]; });   // cada cliente com a sua lista (não compartilhar o array)
+
+/* ================= tarefas fictícias =================
+   feitos: { pessoa: {em, ms} } — cada responsável conclui a sua parte e tem o seu tempo.
+   A tarefa só fica concluída quando todos os responsáveis concluíram. */
+const DIARIAS = ["Conciliar banco","Gerar compras no Conta Azul","Revisar e-mail financeiro","Revisar contas a pagar","Revisar contas a receber","Analisar fluxo de caixa"];
+const SEMANAIS = [["Revisar contas a pagar da semana que vem",5,["Bruna"]],["Agendar pagamentos da semana",5,["Bruna","Paulo"]],["Enviar relatório de contas a pagar e pendentes",5,["Bruna"]]];
+const TAREFAS = []; let tid = 0;
+const BASE_MIN = { "Conciliar banco":4, "Gerar compras no Conta Azul":5, "Revisar e-mail financeiro":5, "Revisar contas a pagar":9,
+  "Revisar contas a receber":2, "Analisar fluxo de caixa":1.5, "Emitir NF de saída":5, "Revisar contas a pagar da semana que vem":25,
+  "Agendar pagamentos da semana":30, "Enviar relatório de contas a pagar e pendentes":15, "Conferir agendamentos da semana":20,
+  "Enviar relatórios à contabilidade":40, "Revisar DRE":45, "Agendar folha de pagamento":35 };
+const msBase = n => (BASE_MIN[n] || 6) * (0.7 + Math.random() * 0.7) * 60e3;
+const ddmm = d => d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });   // sistema de longo prazo: sempre com ano
+function diaUtil(off){ const d = new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate() + off); return d; }   // meio-dia local: toISOString cai no mesmo dia em UTC-3
+const iso = d => d.toISOString().slice(0,10);
+/* prazo = data de entrega · meta = até quando tem que estar pronto (opcional) */
+function nova(emp, nome, tipo, resp, prazo, feitoPor, meta){
+  const t = { id:++tid, emp, nome, tipo, resp, prazo:iso(prazo), meta:meta ? iso(meta) : null, feitos:{} };
+  const quando = () => { const d = new Date(t.prazo + "T09:00"); d.setMinutes(Math.random() * 180);   // concluída no próprio dia
+    return Math.min(d.getTime(), Date.now() - 60e3 * (5 + Math.random() * 60)); };
+  (feitoPor || []).slice(0, 1).forEach(p => t.feitos[p] = { em:quando(), ms:msBase(nome) });
+  TAREFAS.push(t); return t;
+}
+(function gerar(){
+  const hoje = diaUtil(0);
+  const cfg = {
+    "101":{ n:6, feitas:2, extra:[["Conferir agendamentos da semana","Semanal",["Bruna","Paulo"]]],
+            atr:[["Revisar contas a pagar da semana que vem","Semanal",["Bruna"],-5],["Conciliar banco","Diário",["Ana"],-1]] },
+    "102":{ n:6, feitas:6, atr:[["Enviar fechamento de caixa","Semanal",["Bruna"],-2]] },
+    "103":{ n:6, feitas:6 }, "104":{ n:5, feitas:1 }, "106":{ n:2, feitas:2 }, "107":{ n:0, feitas:0 },
+    "105":{ n:0, feitas:0, extra:[["Emitir NF de saída","Diário",["Bruna"]],["Revisar e-mail financeiro","Diário",["Bruna"]],["Enviar relatório de vendas","Mensal",["Bruna"]]] }
+  };
+  Object.entries(cfg).forEach(([cod, c]) => {
+    const hojeList = DIARIAS.slice(0, c.n).map(n => [n,"Diário",["Ana"]]).concat(c.extra || []);
+    hojeList.forEach(([n, tp, r], i) => nova(cod, n, tp, r, hoje, i < c.feitas ? r : []));
+    (c.atr || []).forEach(([n, tp, r, off]) => nova(cod, n, tp, r, diaUtil(off)));
+    // o mês inteiro (+7 dias): dias passados já concluídos, futuros em aberto
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12);
+    const fim = new Date(Math.max(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 12), diaUtil(7)));
+    const existe = (n, d) => TAREFAS.some(t => t.emp === cod && t.nome === n && t.prazo === iso(d));
+    for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)){
+      if (d.getDay() === 0 || d.getDay() === 6 || iso(d) === iso(hoje)) continue;
+      const passado = d < hoje;
+      if (c.n) DIARIAS.slice(0, c.n).forEach(n => existe(n, d) || nova(cod, n, "Diário", ["Ana"], new Date(d), passado ? ["Ana"] : []));
+      if (d.getDay() === 5 && c.n) SEMANAIS.forEach(([n, , r]) => existe(n, d) || nova(cod, n, "Semanal", r, new Date(d), passado ? r : []));
+    }
+  });
+  // mensais com data meta (pronto até) e data de entrega
+  const dia = n => new Date(hoje.getFullYear(), hoje.getMonth(), n, 12);
+  ["101","102","103"].forEach(cod => {
+    nova(cod, "Enviar relatórios à contabilidade", "Mensal", ["Bruna"], dia(10), [], dia(9));
+    nova(cod, "Revisar DRE", "Mensal", ["Paulo"], dia(15));
+  });
+  nova("101", "Agendar folha de pagamento", "Mensal", ["Bruna"], dia(5), ["Bruna"], dia(2));
+  nova("101", "Distribuição de lucros", "Mensal", ["Bruna"], dia(20), [], dia(18));
+  // Carlos: reuniões mensais e demandas pontuais
+  nova("101", "Reunião mensal com o cliente", "Mensal", ["Carlos"], hoje);
+  nova("102", "Demanda pontual: renegociar tarifa bancária", "Pontual", ["Carlos","Bruna"], hoje);
+  nova("103", "Reunião mensal com o cliente", "Mensal", ["Carlos"], diaUtil(-3));
+  nova("102", "Reunião mensal com o cliente", "Mensal", ["Carlos"], diaUtil(2));
+})();
+const hojeStr = () => diaUtil(0).toISOString().slice(0,10);
+const HIST_T = [];   // { emp, nome, user, dia, ms } — no app real: tempos gravados nos meses anteriores
+(function(){
+  const h = diaUtil(0), ini = new Date(h.getFullYear(), h.getMonth(), 1, 12);
+  for (let k = 1; k <= 90; k++){
+    const d = new Date(ini); d.setDate(d.getDate() - k); if (d.getDay() === 0 || d.getDay() === 6) continue;
+    [["101",6],["102",6],["103",6],["104",5],["106",2]].forEach(([cod, n]) => {
+      DIARIAS.slice(0, n).forEach(nm => HIST_T.push({ emp:cod, nome:nm, user:"Ana", dia:iso(d), ms:msBase(nm) }));
+      if (d.getDay() === 5 && n > 2) SEMANAIS.forEach(([nm, , r]) => HIST_T.push({ emp:cod, nome:nm, user:r[0], dia:iso(d), ms:msBase(nm) }));
+    });
+  }
+})();
+
+/* Recorrência: regras de cada cliente. Meses futuros são gerados a partir delas (previsão do mês). */
+const ROTINAS = {
+  "101":{ diarias:DIARIAS.slice(0,6).map(n => [n,["Ana"]]), semanais:true,
+          mensais:[["Agendar folha de pagamento",["Bruna"],5,2],["Reunião mensal com o cliente",["Carlos"],7],["Enviar relatórios à contabilidade",["Bruna"],10,9],["Revisar DRE",["Paulo"],15],["Distribuição de lucros",["Bruna"],20,18]] },
+  "102":{ diarias:DIARIAS.slice(0,6).map(n => [n,["Ana"]]), semanais:true,
+          mensais:[["Reunião mensal com o cliente",["Carlos"],9],["Enviar relatórios à contabilidade",["Bruna"],10,9],["Revisar DRE",["Paulo"],15]] },
+  "103":{ diarias:DIARIAS.slice(0,6).map(n => [n,["Ana"]]), semanais:true,
+          mensais:[["Reunião mensal com o cliente",["Carlos"],4],["Enviar relatórios à contabilidade",["Bruna"],10,9],["Revisar DRE",["Paulo"],15]] },
+  "104":{ diarias:DIARIAS.slice(0,5).map(n => [n,["Ana"]]), semanais:true, mensais:[] },
+  "106":{ diarias:DIARIAS.slice(0,2).map(n => [n,["Ana"]]), semanais:false, mensais:[] },
+  "105":{ diarias:[["Emitir NF de saída",["Bruna"]],["Revisar e-mail financeiro",["Bruna"]]], semanais:false, mensais:[["Enviar relatório de vendas",["Bruna"],7]] },
+  "107":{ diarias:[], semanais:false, mensais:[] }
+};
+const MESES_PRONTOS = new Set([diaUtil(0).getFullYear() * 12 + diaUtil(0).getMonth()]);   // o mês atual já veio do gerar()
+function garantirMes(ano, mes){
+  const k = ano * 12 + mes, atual = diaUtil(0).getFullYear() * 12 + diaUtil(0).getMonth();
+  if (k <= atual || MESES_PRONTOS.has(k)) return;                 // só prevê para a frente
+  MESES_PRONTOS.add(k);
+  const ult = new Date(ano, mes + 1, 0).getDate();
+  for (let n = 1; n <= ult; n++) ROT_LIST.forEach(r => gerarNoDia(r, new Date(ano, mes, n, 12)));
+}
+/* regra da rotina × dia: diária seg–sex; semanal no dia da semana; mensal no dia do mês (ou no último dia, se o mês for menor) */
+function bate(r, d){
+  if (!r.ativa || EMPRESAS.find(e => e.cod === r.emp)?.status === "Encerrada") return false;
+  const ds = iso(d); if (ds < r.inicio || (r.fim && ds > r.fim)) return false;
+  if (r.tipo === "Diário") return d.getDay() >= 1 && d.getDay() <= 5;
+  if (r.tipo === "Semanal") return d.getDay() === +r.diaSem;
+  if (r.tipo === "Quinzenal"){                       // a cada 15 dias desde o início; sábado/domingo passa para a segunda
+    if (d.getDay() === 0 || d.getDay() === 6) return false;
+    const ini = new Date(r.inicio + "T12:00");
+    for (let volta = 0; volta <= 2; volta++){
+      const s0 = new Date(d); s0.setDate(d.getDate() - volta);
+      if (volta > 0 && s0.getDay() !== 0 && s0.getDay() !== 6) break;
+      const dias = Math.round((s0 - ini) / 864e5);
+      if (dias >= 0 && dias % 15 === 0) return true;
+    }
+    return false;
+  }
+  const ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === Math.min(+r.dia, ult);
+}
+function gerarNoDia(r, d){
+  if (!bate(r, d)) return;
+  if (TAREFAS.some(t => t.emp === r.emp && t.nome === r.nome && t.prazo === iso(d))) return;     // já existe
+  const meta = r.tipo === "Mensal" && r.meta ? new Date(d.getFullYear(), d.getMonth(), Math.min(+r.meta, d.getDate()), 12) : null;
+  const t = nova(r.emp, r.nome, r.tipo, [...r.resp], d, [], meta);
+  t.rot = r.id; t.ckBase = [...r.checklist];
+}
+const concluida = t => Object.keys(t.feitos).length > 0;
+const quemConcluiu = t => Object.entries(t.feitos)[0];          // [pessoa, {em, ms}]
+const alvo = t => t.meta || t.prazo;     // o dia em que tem que estar feita
+const dmy = s => ddmm(new Date(s + "T12:00"));
+function fimSemana(){ const d = diaUtil(0); const f = (5 - d.getDay() + 7) % 7 || (d.getDay() === 5 ? 0 : 7); d.setDate(d.getDate() + f); return iso(d); }
+/* contagens do ponto de vista de quem está logado (Carlos só conta mensais e pontuais) */
+function recalc(){
+  const u = user();
+  EMPRESAS.forEach(e => {
+    const vis = TAREFAS.filter(t => t.emp === e.cod && veTarefa(t, u));
+    const h = vis.filter(t => alvo(t) === hojeStr());
+    e.hoje = h.length; e.feitas = h.filter(concluida).length;
+    e.atras = vis.filter(t => alvo(t) < hojeStr() && !concluida(t)).length;
+  });
+}
+
+/* ================= motor do cronômetro =================
+   Sessão = 1 usuário × 1 empresa × 1 dia.
+   trechos = [{ini, fim}] — fim null = rodando. Pausa = fechar o trecho.
+   Tempo ativo = soma dos trechos. É dele que sai o tempo de cada tarefa (bloco 2):
+   tarefa = ativo(no momento da conclusão) − ativo(no checkpoint anterior). */
+const SESS = [];
+const REGS = [];            // registros de atividade (tabela no banco)
+const hojeISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };   // data local, não UTC
+const now = () => Date.now();
+
+function sessao(user, cod){ return SESS.find(s => s.user === user && s.emp === cod && s.dia === hojeISO()); }
+function rodando(user){ return SESS.find(s => s.user === user && s.estado === "rodando"); }
+function ativo(s, t = now()){ return s.trechos.reduce((a, x) => a + ((x.fim ?? t) - x.ini), 0); }
+/* tipo: ini | pau | enc | rev | tar — texto já no formato do registro */
+function registrar(s, tipo, texto){ REGS.push({ t:now(), user:s.user, emp:s.emp, tipo, texto, ativo:ativo(s) }); }
+const incompletas = cod => { const e = emp(cod); return `tarefas incompletas ${Math.max(0, e.hoje - e.feitas)}/${e.hoje}`; };
+
+/* Estados da sessão: rodando · pausada (vou em outra e já volto) · finalizada (terminei esta empresa hoje)
+   · fechada (22h, registro congelado — só o administrador corrige, direto no banco). */
+const HORA_FECHAMENTO = 22;
+const FECHADOS = {};                     // dia → true
+const diaFechado = () => !!FECHADOS[hojeISO()];
+const hhmm = t => new Date(t).toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+
+function fecharTrecho(s, quando = now()){
+  const t = s.trechos[s.trechos.length - 1];
+  if (t && t.fim === null) t.fim = Math.max(t.ini, quando);
+}
+function iniciar(user, cod){
+  if (diaFechado()) return false;
+  let s = sessao(user, cod);
+  if (!s){ s = { user, emp:cod, dia:hojeISO(), trechos:[], estado:"pausada", ultimaAtividade:now(), auto:false, checkpoint:0 }; SESS.push(s); }
+  const reabriu = s.estado === "finalizada";
+  s.trechos.push({ ini:now(), fim:null }); s.estado = "rodando"; s.ultimaAtividade = now(); s.finalizadaEm = null;
+  registrar(s, "ini", s.trechos.length === 1 ? "iniciou as rotinas" : reabriu ? "reabriu as rotinas depois de finalizar" : "retomou as rotinas");
+  return true;
+}
+function pausar(s){
+  fecharTrecho(s); s.estado = "pausada";
+  registrar(s, "pau", "pausou as rotinas · " + incompletas(s.emp));
+}
+function finalizar(s){
+  fecharTrecho(s); s.estado = "finalizada"; s.finalizadaEm = now();
+  registrar(s, "enc", "finalizou as rotinas · " + incompletas(s.emp));
+}
+/* Fechamento das 22h: roda no servidor. Congela o dia de todo mundo. */
+function fecharDia(){
+  FECHADOS[hojeISO()] = true;
+  SESS.filter(s => s.dia === hojeISO() && s.estado !== "fechada").forEach(s => {
+    if (s.estado === "rodando"){ fecharTrecho(s, s.ultimaAtividade); s.auto = true; }   // ficou rodando: fecha na última atividade
+    s.estado = "fechada";
+    registrar(s, s.auto ? "rev" : "fec", `registro do dia fechado às ${HORA_FECHAMENTO}h · tempo final ${fmt(ativo(s))}` +
+      (s.auto ? " · estava rodando, fechado na última atividade · revisar" : ""));
+  });
+}
+
+/* ================= util ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const emp = cod => EMPRESAS.find(e => e.cod === cod);
+const nome = cod => emp(cod).nome;
+function fmt(ms){ const s = Math.max(0, Math.floor(ms/1000)); return [s/3600, s%3600/60, s%60].map(v => String(Math.floor(v)).padStart(2,"0")).join(":"); }
+const sit = e => e.atras ? "atrasada" : e.feitas >= e.hoje ? "concluida" : "aberto";
+const SIT = { atrasada:{c:"var(--bad)", n:3, tag:"t-bad", txt:"Em aberto"}, aberto:{c:"var(--warn)", n:2, tag:"t-warn", txt:"Em aberto"}, concluida:{c:"var(--ok)", n:1, tag:"t-ok", txt:"Concluída"} };
+const user = () => $("#user").value;
+const meus = () => EMPRESAS.filter(e => e.status !== "Encerrada" && (veTodosClientes(user()) || e.vinc.includes(user())));
+function opcoesUsuario(){ const v = $("#user").value; $("#user").innerHTML = USERS.filter(u => P(u).ativo).map(u => `<option value="${u}">${u}</option>`).join(""); if (v && P(v) && P(v).ativo) $("#user").value = v; }
+opcoesUsuario();
+
+$("#hoje").textContent = new Date().toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+USERS.forEach(u => $("#fcUser").insertAdjacentHTML("beforeend", `<option>${u}</option>`));
+EMPRESAS.forEach(e => $("#fcEmp").insertAdjacentHTML("beforeend", `<option value="${e.cod}">${esc(e.nome)}</option>`));
+
+/* ================= navegação ================= */
+let view = "home", aberta = null;
+const TITULOS = { home:"Home", clientes:"Tarefas", empresa:"", crono:"Histórico de atividade", agenda:"Calendário da operação", cadcli:"Cadastro de clientes", cadsen:"Cadastro de senhas e acessos", cadtar:"Cadastro de tarefas", cadcol:"Cadastro de colaboradores" };
+function ir(v, cod){
+  if (v !== "empresa"){ fecharDetalhe(); fecharSenhas(); }
+  if (v !== "cadcli" && typeof fecharFicha === "function") fecharFicha();
+  if (v !== "cadtar" && typeof fecharRot === "function") fecharRot();
+  if (v !== "cadcol" && typeof fecharCol === "function") fecharCol();
+  view = v; if (cod) aberta = cod;
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
+  document.querySelectorAll("aside a[data-view]").forEach(a => a.classList.toggle("on", a.dataset.view === (v === "empresa" ? "clientes" : v)));
+  $("#titulo").textContent = v === "empresa" ? "Tarefas / " + nome(aberta) : TITULOS[v];
+  if (v === "empresa"){ $("#eNome").textContent = nome(aberta); $("#eRazao").textContent = emp(aberta).cod + " · " + emp(aberta).razao; }
+  render();
+}
+document.querySelectorAll("aside a[data-view]").forEach(a => a.addEventListener("click", ev => { ev.preventDefault(); sair(a.dataset.view); }));
+$("#voltar").onclick = () => sair("clientes");
+
+/* ================= clientes ================= */
+let fSit = "", sortK = "sitN", sortDir = -1;
+function renderClientes(){
+  const lista = meus();
+  const atr = lista.reduce((s, e) => s + e.atras, 0);
+  $("#counts").innerHTML =
+    `<div><b>${lista.reduce((s, e) => s + e.hoje - Math.min(e.feitas, e.hoje), 0)}</b><span>tarefas em aberto hoje</span></div>
+     <div class="${atr ? "bad" : ""}"><b>${atr}</b><span>atrasadas</span></div>
+     <div><b>${lista.filter(e => sit(e) !== "concluida").length}</b><span>clientes em aberto</span></div>
+     <div><b>${lista.filter(e => sit(e) === "concluida").length}</b><span>clientes concluídos</span></div>`;
+  const q = $("#q").value.trim().toLowerCase();
+  lista.forEach(e => e.sitN = SIT[sit(e)].n);
+  const rows = lista
+    .filter(e => (!fSit || (fSit === "aberto" ? sit(e) !== "concluida" : sit(e) === fSit)) &&
+                 (!q || (e.nome + " " + e.razao + " " + e.cod).toLowerCase().includes(q)))
+    .sort((a, b) => (a[sortK] > b[sortK] ? 1 : a[sortK] < b[sortK] ? -1 : 0) * sortDir || b.prioN - a.prioN);
+  const run = rodando(user());
+  $("#rows").innerHTML = rows.map(e => { const s = SIT[sit(e)]; return `
+    <tr data-cod="${e.cod}" class="${run && run.emp === e.cod ? "aberta" : ""}">
+      <td><span class="sem" style="background:${s.c}"></span></td>
+      <td class="emp"><b>${esc(e.nome)}</b><small>${e.cod} · ${esc(e.razao)}</small></td>
+      <td><span class="prio"><i style="background:${PRIO[e.prio].c}"></i>${e.prio}</span></td>
+      <td class="n ${e.hoje ? "" : "zero"}">${Math.min(e.feitas, e.hoje)}/${e.hoje}</td>
+      <td class="n">${e.atras ? `<span class="tag t-bad">${e.atras}</span>` : '<span class="zero">0</span>'}</td>
+      <td><span class="tag ${s.tag}">${s.txt}</span>${minha(e.cod)}</td>
+    </tr>`; }).join("") || `<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum cliente com esse filtro</td></tr>`;
+  document.querySelectorAll("th[data-k] .arr").forEach(a => a.textContent = "");
+  const th = document.querySelector(`th[data-k="${sortK}"] .arr`); if (th) th.textContent = sortDir > 0 ? "▲" : "▼";
+}
+
+/* o que EU fiz hoje nesse cliente (aparece embaixo do status) */
+function minha(cod){
+  const s = sessao(user(), cod); if (!s) return "";
+  const txt = s.estado === "finalizada" ? `você finalizou ${hhmm(s.finalizadaEm)}` : s.estado === "pausada" ? `pausada · ${fmt(ativo(s))}` : s.estado === "rodando" ? `rodando · ${fmt(ativo(s))}` : `fechada · ${fmt(ativo(s))}`;
+  return `<div class="zero" style="font-size:11.5px;margin-top:2px">${txt}</div>`;
+}
+
+/* ================= cronômetro: registros ================= */
+function renderCrono(){
+  const u = $("#fcUser").value, c = $("#fcEmp").value, d = $("#fcData").value;
+  const todos = veTodosRegistros(user());
+  $("#fcUser").hidden = !todos;
+  const rows = REGS.filter(r => (todos ? (!u || r.user === u) : r.user === user()) && (!c || r.emp === c) && (!d || iso(new Date(r.t)) === d));
+  $("#fcCount").textContent = rows.length + " registros";
+  $("#regs").innerHTML = rows.map(r => `<li>
+    <span class="d">${new Date(r.t).toLocaleDateString("pt-BR")}</span>
+    <span class="d">${new Date(r.t).toLocaleTimeString("pt-BR")}</span>
+    <span class="c">${fmt(r.ativo)}</span>
+    <span>${r.user}</span>
+    <span class="e">${r.emp}-${esc(nome(r.emp).toUpperCase())}</span>
+    <span class="${r.tipo}">${esc(r.texto)}</span></li>`).join("")
+    || `<li class="vazio">Nenhum registro ainda. Entre num cliente para começar.</li>`;
+}
+["#fcUser","#fcEmp","#fcData"].forEach(id => $(id).addEventListener("change", renderCrono));
+
+/* ================= calendário do mês do cliente =================
+   Diárias aparecem resumidas (n diárias). Semanais, mensais e pontuais aparecem pelo nome.
+   Tarefa com meta aparece 2 vezes, ligadas: ◎ no dia da meta e ▸ no dia da entrega. Passar o mouse destaca as duas. */
+let calOff = 0;
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function estadoCal(t, dia){
+  if (concluida(t)) return "ok";
+  if (dia < hojeStr()) return "v";
+  if (dia === hojeStr()) return "h";
+  return "";
+}
+function renderCal(passa){
+  const base = diaUtil(0); base.setDate(1); base.setMonth(base.getMonth() + calOff);
+  const ano = base.getFullYear(), mes = base.getMonth();
+  $("#calMes").textContent = MESES[mes] + " " + ano;
+  const prim = new Date(ano, mes, 1, 12), ult = new Date(ano, mes + 1, 0, 12);
+  garantirMes(ano, mes); garantirMes(ano, mes + 1);
+  const ini = new Date(prim); ini.setDate(ini.getDate() - prim.getDay());                     // começa no domingo
+  const fim = new Date(ult); fim.setDate(fim.getDate() + (6 - ult.getDay()));
+  const ts = TAREFAS.filter(t => t.emp === aberta && passa(t));
+  let h = ["dom","seg","ter","qua","qui","sex","sáb"].map(d => `<div class="dow">${d}</div>`).join("");
+  for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)){
+    const ds = iso(d), fds = d.getDay() === 0 || d.getDay() === 6;
+    const doDia = ts.filter(t => t.prazo === ds || t.meta === ds);
+    const diarias = doDia.filter(t => t.tipo === "Diário");
+    const outras = doDia.filter(t => t.tipo !== "Diário");
+    let evs = "";
+    if (diarias.length){
+      const feitas = diarias.filter(concluida).length, st = feitas === diarias.length ? "ok" : ds < hojeStr() ? "v" : "";
+      evs += `<span class="ev dia ${st}">${feitas}/${diarias.length} diárias</span>`;
+    }
+    outras.forEach(t => {
+      const k = t.meta ? (t.meta === ds ? '<span class="k">◎</span>' : '<span class="k">▸</span>') : "";
+      const tip = `${t.nome} · ${t.tipo} · ${t.resp.join(", ")}` + (t.meta ? ` · meta ${dmy(t.meta)}, entrega ${dmy(t.prazo)}` : ` · entrega ${dmy(t.prazo)}`);
+      evs += `<span class="ev ${estadoCal(t, alvo(t))}" data-tid="${t.id}" title="${esc(tip)}">${k}${esc(t.nome)}</span>`;
+    });
+    h += `<div class="c ${d.getMonth() !== mes ? "fora" : ""} ${fds ? "fds" : ""} ${ds === hojeStr() ? "hoje" : ""}"><div class="n">${d.getDate()}</div>${evs}</div>`;
+  }
+  $("#calGrid").innerHTML = h;
+}
+$("#calAnt").onclick = () => { calOff--; render(); };
+$("#calProx").onclick = () => { calOff++; render(); };
+$("#calHoje").onclick = () => { calOff = 0; render(); };
+$("#calGrid").addEventListener("mouseover", ev => { const e = ev.target.closest(".ev[data-tid]"); if (!e) return;
+  document.querySelectorAll(`.ev[data-tid="${e.dataset.tid}"]`).forEach(x => x.classList.add("hl")); });
+$("#calGrid").addEventListener("mouseout", ev => { const e = ev.target.closest(".ev[data-tid]"); if (!e) return;
+  document.querySelectorAll(".ev.hl").forEach(x => x.classList.remove("hl")); });
+
+/* tarefa pontual criada pelo próprio usuário */
+$("#pAbrir").onclick = () => { $("#pForm").hidden = false; $("#pData").value = hojeISO(); $("#pNome").focus(); };
+$("#pCanc").onclick = () => { $("#pForm").hidden = true; $("#pForm").reset(); };
+$("#pForm").onsubmit = ev => {
+  ev.preventDefault();
+  if (!pode(user(), "criar_tarefa_pontual")) return;
+  const nome = $("#pNome").value.trim(), data = $("#pData").value; if (!nome || !data) return;
+  const t = nova(aberta, nome, "Pontual", [user()], new Date(data + "T12:00"));
+  t.criadaPor = user(); t.criadaEm = now();
+  const s = sessao(user(), aberta);
+  if (s){ s.ultimaAtividade = now(); registrar(s, "tar", `criou a tarefa pontual "${nome}" para ${dmy(data)}`); }
+  $("#pForm").hidden = true; $("#pForm").reset(); render();
+};
+
+/* ================= aba Tarefas: resumo por cliente ================= */
+let tPer = "hoje", tMin = "", tTip = new Set();
+$("#tTipos").innerHTML = ["Diário","Semanal","Quinzenal","Mensal","Pontual"].map(t => `<button data-t="${t}">${t}</button>`).join("");
+$("#tTipos").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  tTip.has(b.dataset.t) ? tTip.delete(b.dataset.t) : tTip.add(b.dataset.t); b.classList.toggle("on"); render(); });
+[["#tPer", v => { tPer = v; $("#tCustom").hidden = v !== "custom";
+    if (v === "custom" && !$("#tDe").value){ const h = diaUtil(0); $("#tDe").value = iso(new Date(h.getFullYear(), h.getMonth(), 1, 12)); $("#tAte").value = iso(h); } }],
+  ["#tMinhas", v => tMin = v]].forEach(([id, set]) => $(id).addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return; set(b.dataset.v);
+  document.querySelectorAll(id + " button").forEach(x => x.classList.toggle("on", x === b)); render(); }));
+function periodo(){
+  const h = diaUtil(0);
+  if (tPer === "custom"){ let a = $("#tDe").value, b = $("#tAte").value; if (a && b && a > b) [a, b] = [b, a]; return [a || iso(new Date(h.getFullYear(), h.getMonth(), 1, 12)), b || iso(h)]; }
+  if (tPer === "hoje") return [iso(h), iso(h)];
+  if (tPer === "semana"){ const a = new Date(h); a.setDate(h.getDate() - h.getDay()); const b = new Date(a); b.setDate(a.getDate() + 6); return [iso(a), iso(b)]; }
+  const a = new Date(h.getFullYear(), h.getMonth(), 1, 12), b = new Date(h.getFullYear(), h.getMonth() + 1, 0, 12); return [iso(a), iso(b)];
+}
+function grupos(cod){
+  const u = user(), [ini, fim] = periodo(), hj = hojeStr();
+  const ts = TAREFAS.filter(t => t.emp === cod && veTarefa(t, u) && (!tMin || t.resp.includes(u)) && (!tTip.size || tTip.has(t.tipo)));
+  const noPer = t => alvo(t) >= ini && alvo(t) <= fim;
+  return {
+    atr: ts.filter(t => alvo(t) < hj && !concluida(t)),
+    hoje: ts.filter(t => alvo(t) === hj && !concluida(t)),
+    prev: ts.filter(t => alvo(t) > hj && noPer(t) && !concluida(t)),
+    ok: ts.filter(t => noPer(t) && concluida(t))
+  };
+}
+function itemT(t){
+  return `<li><span>${esc(t.nome)}</span><span class="tipo">${t.tipo}</span>${t.resp.map(p => `<span class="pp ${p}">${p}</span>`).join("")}<span class="dt">${dmy(alvo(t))}</span></li>`;
+}
+function renderHome(){
+  const [ini, fim] = periodo();
+  $("#tPerTxt").textContent = ini === fim ? dmy(ini) : `${dmy(ini)} a ${dmy(fim)}`;
+  const lista = meus().map(e => ({ e, g:grupos(e.cod) }));
+  const soma = k => lista.reduce((a, x) => a + x.g[k].length, 0);
+  $("#tCounts").innerHTML = `<div class="${soma("atr") ? "bad" : ""}"><b>${soma("atr")}</b><span>atrasadas</span></div>
+    <div><b>${soma("hoje")}</b><span>para hoje, em aberto</span></div>
+    <div><b>${soma("prev")}</b><span>previstas no período</span></div>
+    <div><b>${soma("ok")}</b><span>concluídas no período</span></div>`;
+  $("#tRows").innerHTML = lista.map(({ e, g }) => {
+    const tot = g.hoje.length + g.prev.length + g.ok.length, pct = tot ? Math.round(g.ok.length / tot * 100) : 0;
+    const num = n => n ? `<span>${n}</span>` : '<span class="zero">0</span>';
+    let h = `<tr data-cod="${e.cod}">
+      <td class="emp"><b>${esc(e.nome)}</b><small>${e.cod} · ${esc(e.razao)}</small></td>
+      <td class="n">${g.atr.length ? `<span class="tag t-bad">${g.atr.length}</span>` : '<span class="zero">0</span>'}</td>
+      <td class="n">${num(g.hoje.length)}</td><td class="n">${num(g.prev.length)}</td><td class="n">${num(g.ok.length)}</td>
+      <td><div class="prog"><div class="bar2"><i style="width:${pct}%"></i></div>${tot ? pct + "%" : "—"}</div></td>
+      <td style="text-align:right"><button class="abrir" style="margin:0" data-abrir="${e.cod}">Entrar →</button></td></tr>`;
+    return h;
+  }).join("");
+  renderFluxo(ini, fim);
+}
+
+/* Análise do fluxo de entrega.
+   Gráfico 1: por dia, previstas (fundo) × concluídas (barra). Um eixo só: quantidade de tarefas.
+   Gráfico 2: por tarefa, tempo médio no período (barra) × média histórica (traço). Um eixo só: minutos. */
+function renderFluxo(ini, fim){
+  const u = user(), cods = new Set(meus().map(e => e.cod));
+  const vis = t => cods.has(t.emp) && veTarefa(t, u) && (!tMin || t.resp.includes(u)) && (!tTip.size || tTip.has(t.tipo));
+  // dias do gráfico 1: o período; se for 1 dia só, mostra os 10 dias úteis até ele
+  let dias = [];
+  if (ini === fim){ const d = new Date(fim + "T12:00"); while (dias.length < 10){ if (d.getDay() % 6) dias.unshift(iso(d)); d.setDate(d.getDate() - 1); } $("#g1sub").textContent = "· últimos 10 dias úteis"; }
+  else { for (let d = new Date(ini + "T12:00"); iso(d) <= fim; d.setDate(d.getDate() + 1)) if (d.getDay() % 6) dias.push(iso(d)); $("#g1sub").textContent = ""; }
+  const ts = TAREFAS.filter(vis);
+  const col = dias.map(d => {
+    const x = ts.filter(t => alvo(t) === d);
+    if (x.length) return { d, prev:x.length, ok:x.filter(concluida).length };
+    const hst = HIST_T.filter(h => h.dia === d && cods.has(h.emp) && (!tMin || h.user === u) && (!tTip.size || tTip.has(SEMANAIS.some(([n]) => n === h.nome) ? "Semanal" : "Diário")));
+    return { d, prev:hst.length, ok:hst.length };
+  });
+  const max = Math.max(1, ...col.map(c => c.prev));
+  $("#g1").innerHTML = col.map(c => {
+    const futuro = c.d > hojeStr();
+    return `<div class="gc ${c.d === hojeStr() ? "hj" : ""}" title="${dmy(c.d)}: ${c.ok} de ${c.prev} concluídas">
+      <span class="gv">${c.prev ? (futuro ? c.prev : `${c.ok}/${c.prev}`) : ""}</span>
+      <div class="gtrack" style="height:${c.prev / max * 100}%"><div class="gfill" style="height:${c.prev ? c.ok / c.prev * 100 : 0}%"></div></div>
+      <span class="gx">${dmy(c.d).slice(0, 5)}</span></div>`;
+  }).join("") || '<div class="zero" style="padding:20px">Sem dias úteis no período.</div>';
+
+  // gráfico 2
+  const per = {}, his = {};
+  const add = (m, nm, ms) => { (m[nm] = m[nm] || []).push(ms); };
+  ts.forEach(t => Object.values(t.feitos).forEach(f => { const d = iso(new Date(f.em));
+    if (d >= ini && d <= fim) add(per, t.nome, f.ms); else if (d < ini) add(his, t.nome, f.ms); }));
+  HIST_T.filter(h => cods.has(h.emp) && h.dia < ini && (!tMin || h.user === u)).forEach(h => add(his, h.nome, h.ms));
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const rows = Object.entries(per).map(([nm, a]) => ({ nm, n:a.length, p:avg(a), h:his[nm] ? avg(his[nm]) : null }))
+    .sort((a, b) => b.p * b.n - a.p * a.n).slice(0, 8);
+  const mx = Math.max(1, ...rows.map(r => Math.max(r.p, r.h || 0))) * 1.08;
+  const mm = ms => { const m = ms / 60e3; return m < 10 ? m.toFixed(1).replace(".", ",") + " min" : Math.round(m) + " min"; };
+  $("#g2").innerHTML = rows.map(r => {
+    const dif = r.h ? Math.round((r.p / r.h - 1) * 100) : null;
+    const tag = dif === null ? '<span class="gd">sem histórico</span>'
+      : Math.abs(dif) < 5 ? '<span class="gd">na média</span>'
+      : dif > 0 ? `<span class="gd up">▲ ${dif}% mais lento</span>` : `<span class="gd dn">▼ ${-dif}% mais rápido</span>`;
+    return `<div class="gr" title="${esc(r.nm)}: ${r.n} execuções, média ${mm(r.p)}${r.h ? ` · histórico ${mm(r.h)}` : ""}">
+      <span class="gn">${esc(r.nm)} <small>${r.n}×</small></span>
+      <div class="gbar"><i style="width:${r.p / mx * 100}%"></i>${r.h ? `<b style="left:${r.h / mx * 100}%"></b>` : ""}</div>
+      <span class="gval">${mm(r.p)} ${tag}</span></div>`;
+  }).join("") || '<div class="zero" style="padding:20px">Nenhuma tarefa concluída no período.</div>';
+}
+$("#tRows").addEventListener("click", ev => { const ab = ev.target.closest("[data-abrir]"); if (ab) entrar(ab.dataset.abrir); });
+["#tDe","#tAte"].forEach(id => $(id).addEventListener("change", render));
+
+/* ================= detalhe da tarefa (cartão) ================= */
+const CHECKLISTS = {
+  "Revisar contas a pagar": ["E-mail","Grupo do WhatsApp","Pastas do Fiscal","Pastas do DP","Pagamentos do dia anterior","Agendamentos feitos"],
+  "Conciliar banco": ["Baixar o extrato do dia","Conciliar os lançamentos","Conferir o saldo final"],
+  "Enviar relatórios à contabilidade": ["Extrato de movimentações do sistema","Extrato bancário","Extrato de aplicação"],
+  "Revisar DRE": ["Contas amarradas à DRE","Categorias duplicadas","Fornecedor em duas categorias","Anomalias de valor"],
+  "Agendar folha de pagamento": ["Salários","Pró-labore","Rescisões e férias","Prestadores PJ"]
+};
+const DIAS_SEM = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function checklist(t){
+  if (!t.ckItens){ t.ckItens = [...(t.ckBase || CHECKLISTS[t.nome] || [])]; t.check = t.ckItens.map(() => concluida(t)); }
+  return { itens:t.ckItens, marcados:t.check };
+}
+function hist(t, txt){ (t.hist = t.hist || []).push({ t:now(), txt }); }
+function recText(t){
+  const d = new Date(t.prazo + "T12:00");
+  if (t.tipo === "Diário") return "Diária · segunda a sexta";
+  if (t.tipo === "Semanal") return `Semanal · toda ${DIAS_SEM[d.getDay()]}`;
+  if (t.tipo === "Quinzenal"){ const r = ROT_LIST.find(x => x.id === t.rot); return r ? `Quinzenal · a cada 15 dias desde ${dmy(r.inicio)}` : "Quinzenal · a cada 15 dias"; }
+  if (t.tipo === "Mensal") return `Mensal · entrega todo dia ${d.getDate()}` + (t.meta ? ` · meta dia ${new Date(t.meta + "T12:00").getDate()}` : "");
+  return `Pontual · só em ${dmy(t.prazo)}`;
+}
+const diaLongo = s => new Date(s + "T12:00").toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"2-digit", year:"numeric" });
+let detId = null;
+function abrirDetalhe(id, msg){ if (typeof fecharSenhas === "function") fecharSenhas(); detId = id; $("#drawer").hidden = false; $("#dMsg").hidden = !msg; $("#dMsg").textContent = msg || ""; renderDetalhe(); }
+function fecharDetalhe(){ detId = null; $("#drawer").hidden = true; }
+$("#dFechar").onclick = fecharDetalhe;
+function renderDetalhe(){
+  if (detId === null) return;
+  const t = TAREFAS.find(x => x.id === detId), u = user(), feita = concluida(t), pc = podeConcluir(u, t), edita = podeF(u, "alterar_datas");
+  $("#dNome").textContent = t.nome;
+  $("#dTags").innerHTML = `<span class="tipo">${t.tipo}</span><span class="tag ${feita ? "t-ok" : alvo(t) < hojeStr() ? "t-bad" : "t-plain"}">${feita ? "concluída" : alvo(t) < hojeStr() ? "atrasada" : "em aberto"}</span>` +
+    `<span class="criada">${esc(nome(t.emp))}</span>` + (t.criadaPor ? `<span class="criada">criada por ${t.criadaPor}</span>` : "");
+  const campo = (id, lbl, val, dica) => `<label class="dcampo"><span>${lbl}</span>
+      ${edita && !feita ? `<input type="date" id="${id}" value="${val || ""}">` : `<b>${val ? diaLongo(val) : "—"}</b>`}
+      ${val ? `<small>${diaLongo(val)}</small>` : `<small>${dica}</small>`}</label>`;
+  if (t.tipo === "Diário") $("#dDatas").innerHTML = `<div class="lin"><span>Recorrência</span><span>${recText(t)}</span></div>
+    <div class="lin"><span>Dia</span><span>${diaLongo(t.prazo)}</span></div>
+    <div class="hint" style="font-size:11.5px;color:var(--ink3)">Tarefa diária: sem data meta e sem data prevista; datas e recorrência não se editam aqui.</div>`;
+  else $("#dDatas").innerHTML = `<div class="lin"><span>Recorrência</span><span>${recText(t)}</span></div>
+    <div class="dgrid">${campo("dMeta", "Data meta · pronto até", t.meta, "sem meta")}${campo("dEntrega", "Entrega prevista", t.prazo, "")}</div>
+    ${edita ? (feita ? "" : '<div class="hint" style="font-size:11.5px;color:var(--ink3)">Altera só esta ocorrência. Fica no histórico de atividade.</div>')
+            : '<div class="hint" style="font-size:11.5px;color:var(--ink3)">Datas: só analista, supervisor, gestor e Adm alteram.</div>'}`;
+  const podeTransf = pode(u, "transferir_responsavel");
+  const qc = quemConcluiu(t);
+  $("#dResp").innerHTML = t.resp.map((p, i) => `<div class="rsp"><span class="pp ${p}">${p}</span>
+      ${podeTransf && !feita ? `<select data-tr="${i}"><option value="">transferir para…</option>${TODOS.concat("Carlos").filter(x => !t.resp.includes(x)).map(x => `<option>${x}</option>`).join("")}</select>` : ""}</div>`).join("") +
+    (qc ? `<div class="st" style="margin-top:4px;font-size:12px">Concluída por <b>${qc[0]}</b> às ${hhmm(qc[1].em)} em ${fmt(qc[1].ms)}</div>` : "") +
+    (podeTransf ? "" : `<div class="st" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Transferir responsável: só Adm, gestor, supervisor e analista.</div>`);
+  const ck = checklist(t);
+  const podeMarcar = pc && !feita;
+  $("#dCkSec").hidden = !ck.itens.length && !podeMarcar;
+  $("#dCkAdd").hidden = !podeMarcar;
+  $("#dCkProg").textContent = ck.itens.length ? `${ck.marcados.filter(Boolean).length}/${ck.itens.length}` : "";
+  $("#dCk").innerHTML = ck.itens.map((it, i) => `<li class="${ck.marcados[i] ? "on" : ""}"><input type="checkbox" data-ck="${i}" ${ck.marcados[i] ? "checked" : ""} ${podeMarcar ? "" : "disabled"}><span>${esc(it)}</span></li>`).join("");
+  $("#dObs").innerHTML = (t.obs || []).slice().reverse().map(o => `<li><small>${dmy(iso(new Date(o.t)))} ${hhmm(o.t)} · ${o.user}</small>${esc(o.texto)}</li>`).join("");
+  const falta = ck.marcados.filter(m => !m).length;
+  $("#dFoot").innerHTML = view !== "empresa" && !feita
+    ? `<button class="dbtn sec" id="dEntrar">Entrar em ${esc(nome(t.emp))} para executar →</button>`
+    : pc && !feita
+    ? `<button class="dbtn" id="dConcluir" ${falta ? "disabled" : ""}>Concluir tarefa</button>${falta ? `<div class="hint" style="margin-top:6px;font-size:11.5px;color:var(--ink3)">Faltam ${falta} item(ns) do checklist.</div>` : ""}`
+    : `<div class="hint" style="font-size:12px;color:var(--ink3)">${feita ? "Tarefa concluída." : "Você pode ver esta tarefa, mas só os responsáveis concluem."}</div>`;
+  const b = $("#dConcluir"); if (b) b.onclick = () => { concluir(t.id); renderDetalhe(); };
+  const be = $("#dEntrar"); if (be) be.onclick = () => { const id = t.id; entrar(t.emp); if (view === "empresa") abrirDetalhe(id); };
+}
+$("#drawer").addEventListener("change", ev => {
+  const t = TAREFAS.find(x => x.id === detId); if (!t) return;
+  const dt = ev.target.closest("#dMeta, #dEntrega");
+  if (dt && podeF(user(), "alterar_datas") && t.tipo !== "Diário"){
+    const campo = dt.id === "dMeta" ? "meta" : "prazo", antes = t[campo], depois = dt.value || null;
+    if (campo === "prazo" && !depois) return renderDetalhe();
+    if (campo === "meta" && depois && depois > t.prazo){ $("#dMsg").hidden = false; $("#dMsg").textContent = "A meta não pode ser depois da entrega."; return renderDetalhe(); }
+    t[campo] = depois;
+    const s = sessao(user(), t.emp) || { user:user(), emp:t.emp, trechos:[] };
+    registrar(s, "tar", `alterou a ${campo === "meta" ? "data meta" : "entrega"} de "${t.nome}": ${antes ? dmy(antes) : "sem meta"} → ${depois ? dmy(depois) : "sem meta"}`);
+    render(); renderDetalhe(); return;
+  }
+  const c = ev.target.closest("[data-ck]");
+  if (c){ t.check[+c.dataset.ck] = c.checked; hist(t, `${user()} ${c.checked ? "marcou" : "desmarcou"} "${checklist(t).itens[+c.dataset.ck]}"`); $("#dMsg").hidden = true; render(); renderDetalhe(); return; }
+  const tr = ev.target.closest("[data-tr]");
+  if (tr && tr.value && pode(user(), "transferir_responsavel")){
+    const de = t.resp[+tr.dataset.tr], para = tr.value;
+    t.resp[+tr.dataset.tr] = para;
+    hist(t, `${user()} transferiu de ${de} para ${para}`);
+    const s = sessao(user(), t.emp) || { user:user(), emp:t.emp, trechos:[] };
+    registrar(s, "tar", `transferiu a tarefa "${t.nome}" de ${de} para ${para}`);
+    render(); renderDetalhe();
+  }
+});
+$("#dCkAdd").onsubmit = ev => {
+  ev.preventDefault();
+  const t = TAREFAS.find(x => x.id === detId), txt = $("#dCkNovo").value.trim();
+  if (!t || !txt || !podeConcluir(user(), t) || concluida(t)) return;
+  checklist(t); t.ckItens.push(txt); t.check.push(false); $("#dCkNovo").value = "";
+  render(); renderDetalhe();
+};
+$("#dObsSalvar").onclick = () => {
+  const t = TAREFAS.find(x => x.id === detId), txt = $("#dObsTxt").value.trim(); if (!t || !txt) return;
+  (t.obs = t.obs || []).push({ user:user(), t:now(), texto:txt }); $("#dObsTxt").value = "";
+  hist(t, `${user()} adicionou uma observação`);
+  const s = sessao(user(), t.emp); if (s){ s.ultimaAtividade = now(); registrar(s, "tar", `comentou na tarefa "${t.nome}"`); }
+  renderDetalhe();
+};
+
+/* ================= senhas e acessos (consulta livre, tudo registrado) ================= */
+const BANCO = { "101":"Sicoob", "102":"Itaú", "103":"Itaú", "104":"Itaú", "105":"Inter", "106":"Banco do Brasil", "107":"Itaú" };
+const LINKS = { "Sicoob":"https://www.sicoob.com.br", "Itaú":"https://www.itau.com.br/empresas", "Inter":"https://inter.co", "Banco do Brasil":"https://www.bb.com.br" };
+const ACESSOS = [];
+let accId = 0;
+EMPRESAS.forEach(e => {
+  const b = BANCO[e.cod], n = e.nome.toLowerCase();
+  ACESSOS.push(
+    { id:++accId, emp:e.cod, sis:`Banco ${b} · empresas`, tipo:"Banco", link:LINKS[b], usu:`operador-${n}-exemplo`, sen:`senha-ficticia-${e.cod}`, obs:"Token físico com a Ana. Liberação de pagamento só com o Paulo." },
+    { id:++accId, emp:e.cod, sis:"Conta Azul", tipo:"Plataforma", link:"https://app.contaazul.com", usu:`financeiro.${n}@exemplo.com`, sen:`senha-ficticia-ca-${e.cod}`, obs:"Login do cliente no plano Pro." },
+    { id:++accId, emp:e.cod, sis:"E-mail financeiro", tipo:"E-mail", link:"https://mail.google.com", usu:`financeiro@${n}-exemplo.com.br`, sen:`senha-ficticia-mail-${e.cod}`, obs:"" },
+    { id:++accId, emp:e.cod, sis:"Prefeitura · NFS-e", tipo:"Governo", link:"https://www.nfse.gov.br", usu:`cnpj-${e.cod}-exemplo`, sen:`senha-ficticia-nf-${e.cod}`, obs:"Certificado digital vence em 03/2027." }
+  );
+});
+ACESSOS.forEach((a, i) => { a.altEm = Date.now() - (20 + i * 9) * 864e5; a.altPor = "Adm"; });
+const STIPOS = ["Banco","Plataforma","E-mail","Governo","Outro"];
+let sTipo = new Set(), sVis = new Set();
+$("#sTipos").innerHTML = STIPOS.map(t => `<button data-t="${t}">${t}</button>`).join("");
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 1600); }
+function copiar(txt){
+  const ok = () => toast("Copiado");
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(ok, () => fallback());
+  else fallback();
+  function fallback(){ const a = document.createElement("textarea"); a.value = txt; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); ok(); } catch(e){ toast("Não deu para copiar"); } a.remove(); }
+}
+function logAcesso(a, acao){
+  const s = sessao(user(), a.emp) || { user:user(), emp:a.emp, trechos:[] };
+  registrar(s, "tar", `${acao} · ${a.sis}`);
+}
+function abrirSenhas(){ fecharDetalhe(); $("#senhas").hidden = false; $("#sEmp").textContent = nome(aberta); sVis.clear(); renderSenhas(); }
+function fecharSenhas(){ $("#senhas").hidden = true; $("#sNovo").hidden = true; }
+function renderSenhas(){
+  if ($("#senhas").hidden) return;
+  const q = $("#sBusca").value.trim().toLowerCase(), adm = !!podeF(user(), "senha_alterar");
+  const lista = ACESSOS.filter(a => a.emp === aberta && (!sTipo.size || sTipo.has(a.tipo)) && (!q || (a.sis + " " + a.tipo + " " + a.usu + " " + a.obs).toLowerCase().includes(q)));
+  $("#sLista").innerHTML = lista.map(a => `<div class="acc" data-acc="${a.id}">
+    <div class="ah"><span class="tipo">${a.tipo}</span><b>${esc(a.sis)}</b>${a.link ? `<a href="${esc(a.link)}" target="_blank" rel="noopener" data-act="link">Abrir ↗</a>` : ""}</div>
+    <div class="cp"><span>Usuário</span><code>${esc(a.usu)}</code><span></span><button data-act="cu">Copiar</button></div>
+    <div class="cp"><span>Senha</span><code>${sVis.has(a.id) ? esc(a.sen) : "••••••••••"}</code><button data-act="ver">${sVis.has(a.id) ? "Ocultar" : "Mostrar"}</button><button data-act="cs">Copiar</button></div>
+    ${a.obs ? `<div class="ob">${esc(a.obs)}</div>` : ""}
+    <div class="adm">${adm ? '<button data-act="alt">Alterar senha</button><button data-act="exc">Excluir</button>' : '<button data-act="sol">Solicitar alteração ao Adm</button>'}</div>
+  </div>`).join("") || '<div class="dsec zero">Nenhum acesso com esse filtro.</div>';
+}
+$("#bSenhas").onclick = abrirSenhas;
+$("#sFechar").onclick = fecharSenhas;
+$("#sBusca").addEventListener("input", renderSenhas);
+$("#sTipos").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  sTipo.has(b.dataset.t) ? sTipo.delete(b.dataset.t) : sTipo.add(b.dataset.t); b.classList.toggle("on"); renderSenhas(); });
+/* mesma regra no painel do cliente e no cadastro geral */
+function acaoAcesso(a, act){
+  if (act === "link"){ logAcesso(a, "abriu o link"); return; }
+  if (act === "cu"){ copiar(a.usu); logAcesso(a, "copiou o usuário"); }
+  if (act === "cs"){ copiar(a.sen); logAcesso(a, "copiou a senha"); }
+  if (act === "ver"){ if (sVis.has(a.id)) sVis.delete(a.id); else { sVis.add(a.id); logAcesso(a, "visualizou a senha"); } }
+  if (act === "sol"){ logAcesso(a, "pediu ao Adm alteração do acesso"); toast("Pedido registrado para o Adm"); }
+  if (act === "alt" && podeF(user(), "senha_alterar")){ const n = prompt(`Nova senha para ${a.sis}:`); if (n){ a.sen = n; a.altEm = now(); a.altPor = user(); logAcesso(a, "Adm alterou a senha"); toast("Senha alterada"); } }
+  if (act === "exc" && podeF(user(), "senha_alterar")){ if (confirm(`Excluir o acesso ${a.sis}?`)){ ACESSOS.splice(ACESSOS.indexOf(a), 1); logAcesso(a, "Adm excluiu o acesso"); } }
+}
+$("#sLista").addEventListener("click", ev => {
+  const el = ev.target.closest("[data-act]"); if (!el) return;
+  acaoAcesso(ACESSOS.find(x => x.id === +el.closest("[data-acc]").dataset.acc), el.dataset.act);
+  renderSenhas();
+});
+$("#sNovoAbrir").onclick = () => { const a = { emp:aberta, sis:"acesso novo" }; if (perm(user(), "senha_cadastrar") !== "s"){ logAcesso(a, "pediu ao Adm um acesso novo"); return toast("Pedido registrado para o Adm"); } $("#sNovo").hidden = false; $("#nSis").focus(); };
+$("#sNovoCanc").onclick = () => { $("#sNovo").hidden = true; $("#sNovo").reset(); };
+$("#sNovo").onsubmit = ev => {
+  ev.preventDefault();
+  const a = { id:++accId, emp:aberta, sis:$("#nSis").value.trim(), tipo:$("#nTipo").value, link:$("#nLink").value.trim(), usu:$("#nUsu").value.trim(), sen:$("#nSen").value, obs:$("#nObs").value.trim() };
+  if (!a.sis) return;
+  a.altEm = now(); a.altPor = user();
+  ACESSOS.push(a); logAcesso(a, "cadastrou o acesso"); $("#sNovo").reset(); $("#sNovo").hidden = true; renderSenhas(); toast("Acesso salvo");
+};
+
+/* ================= calendário da operação (todos os clientes) ================= */
+let aModo = "mes", aOff = 0, aTip = new Set();
+$("#aTipos").innerHTML = ["Diário","Semanal","Quinzenal","Mensal","Pontual"].map(t => `<button data-t="${t}">${t}</button>`).join("");
+EMPRESAS.forEach(e => $("#aEmp").insertAdjacentHTML("beforeend", `<option value="${e.cod}">${esc(e.nome)}</option>`));
+USERS.filter(u => u !== "Adm").forEach(u => $("#aResp").insertAdjacentHTML("beforeend", `<option>${u}</option>`));
+function renderAgenda(){
+  const u = user(), fe = $("#aEmp").value, fr = $("#aResp").value;
+  const cods = meus().map(e => e.cod).filter(c => !fe || c === fe);
+  const h = diaUtil(0); let ini, fim, tit;
+  if (aModo === "mes"){
+    const b = new Date(h.getFullYear(), h.getMonth() + aOff, 1, 12), ult = new Date(b.getFullYear(), b.getMonth() + 1, 0, 12);
+    garantirMes(b.getFullYear(), b.getMonth()); garantirMes(b.getFullYear(), b.getMonth() + 1);
+    ini = new Date(b); ini.setDate(1 - b.getDay()); fim = new Date(ult); fim.setDate(ult.getDate() + 6 - ult.getDay());
+    tit = MESES[b.getMonth()] + " " + b.getFullYear();
+  } else {
+    ini = new Date(h); ini.setDate(h.getDate() - h.getDay() + aOff * 7); fim = new Date(ini); fim.setDate(ini.getDate() + 6);
+    garantirMes(ini.getFullYear(), ini.getMonth()); garantirMes(fim.getFullYear(), fim.getMonth());
+    tit = `${dmy(iso(ini))} a ${dmy(iso(fim))}`;
+  }
+  $("#aTit").textContent = tit;
+  const mesRef = aModo === "mes" ? new Date(h.getFullYear(), h.getMonth() + aOff, 1).getMonth() : null;
+  const ts = TAREFAS.filter(t => cods.includes(t.emp) && veTarefa(t, u) && (!fr || t.resp.includes(fr)) && (!aTip.size || aTip.has(t.tipo)));
+  const ev = (t, ds) => {
+    const k = t.meta ? (t.meta === ds ? '<span class="k">◎</span>' : '<span class="k">▸</span>') : "";
+    const tip = `${nome(t.emp)} · ${t.nome} · ${t.tipo} · ${t.resp.join(", ")}` + (t.meta ? ` · meta ${dmy(t.meta)}, entrega ${dmy(t.prazo)}` : "");
+    return `<span class="ev ${estadoCal(t, alvo(t))}" data-tid="${t.id}" data-abrir-t="${t.id}" title="${esc(tip)}">${k}<span class="cli">${esc(nome(t.emp))}</span>${esc(t.nome)}</span>`;
+  };
+  let g = ["dom","seg","ter","qua","qui","sex","sáb"].map(d => `<div class="dow">${d}</div>`).join("");
+  for (let d = new Date(ini); d <= fim; d.setDate(d.getDate() + 1)){
+    const ds = iso(d), doDia = ts.filter(t => t.prazo === ds || t.meta === ds);
+    const di = doDia.filter(t => t.tipo === "Diário"), out = doDia.filter(t => t.tipo !== "Diário");
+    let c = "";
+    if (di.length && aModo === "mes"){ const ok = di.filter(concluida).length; c += `<span class="ev dia ${ok === di.length ? "ok" : ds < hojeStr() ? "v" : ""}">${ok}/${di.length} diárias</span>`; }
+    if (aModo === "mes"){
+      // a mesma tarefa em vários clientes vira uma linha só ("· 4 clientes")
+      const grp = {};
+      out.forEach(t => { const k = t.nome + (t.meta === ds ? "|m" : "|e"); (grp[k] = grp[k] || []).push(t); });
+      const linhas = Object.values(grp).map(g => {
+        if (g.length === 1) return ev(g[0], ds);
+        const t0 = g[0], k = t0.meta ? (t0.meta === ds ? '<span class="k">◎</span>' : '<span class="k">▸</span>') : "";
+        const st = g.some(t => estadoCal(t, alvo(t)) === "v") ? "v" : g.every(concluida) ? "ok" : estadoCal(t0, alvo(t0));
+        return `<span class="ev ${st}" title="${esc(t0.nome + ": " + g.map(t => nome(t.emp) + (concluida(t) ? " ✓" : "")).join(", "))}">${k}${esc(t0.nome)} <span class="cli">· ${g.length} clientes</span></span>`;
+      });
+      linhas.slice(0, 4).forEach(l => c += l);
+      if (linhas.length > 4) c += `<span class="ev mais">+${linhas.length - 4}</span>`;
+    } else {
+      cods.forEach(cod => {
+        const dc = di.filter(t => t.emp === cod), oc = out.filter(t => t.emp === cod);
+        if (!dc.length && !oc.length) return;
+        c += `<div class="semcli">${esc(nome(cod))}${dc.length ? ` · ${dc.filter(concluida).length}/${dc.length} diárias` : ""}</div>` + oc.map(t => ev(t, ds).replace(/<span class="cli">.*?<\/span>/, "")).join("");
+      });
+    }
+    const fora = aModo === "mes" && d.getMonth() !== mesRef;
+    g += `<div class="c ${fora ? "fora" : ""} ${d.getDay() % 6 ? "" : "fds"} ${ds === hojeStr() ? "hoje" : ""}"><div class="n">${d.getDate()}</div>${c}</div>`;
+  }
+  $("#aGrid").innerHTML = g;
+  $("#aGrid").classList.toggle("modo-semana", aModo === "semana");
+  $("#aTit").classList.toggle("semana", aModo === "semana");
+}
+$("#aModo").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; aModo = b.dataset.v; aOff = 0;
+  document.querySelectorAll("#aModo button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+$("#aAnt").onclick = () => { aOff--; render(); };
+$("#aProx").onclick = () => { aOff++; render(); };
+$("#aHoje").onclick = () => { aOff = 0; render(); };
+["#aEmp","#aResp"].forEach(id => $(id).addEventListener("change", render));
+$("#aTipos").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  aTip.has(b.dataset.t) ? aTip.delete(b.dataset.t) : aTip.add(b.dataset.t); b.classList.toggle("on"); render(); });
+$("#aGrid").addEventListener("click", ev => { const e = ev.target.closest("[data-abrir-t]"); if (e) abrirDetalhe(+e.dataset.abrirT); });
+$("#aGrid").addEventListener("mouseover", ev => { const e = ev.target.closest(".ev[data-tid]"); if (!e) return;
+  document.querySelectorAll(`#aGrid .ev[data-tid="${e.dataset.tid}"]`).forEach(x => x.classList.add("hl")); });
+$("#aGrid").addEventListener("mouseout", () => document.querySelectorAll("#aGrid .ev.hl").forEach(x => x.classList.remove("hl")));
+
+/* ================= cadastro de clientes =================
+   Sensíveis (CNPJ, razão social, honorário, plano, sócios): só o Adm altera; os demais pedem ao Adm.
+   Encerrar cliente: só Adm. Cadastrar cliente novo e editar o resto: todos. Tudo vai para o histórico. */
+const SENSIVEIS = ["razao","cnpj","honorario","plano"];
+const ROTULO = { cod:"código", nome:"nome fantasia", razao:"razão social", cnpj:"CNPJ", status:"situação", prio:"prioridade", segmento:"segmento", trib:"tributação",
+  honorario:"honorário", plano:"plano", inicio:"início do contrato", sistema:"sistema financeiro", grupo:"grupo principal", email:"e-mail financeiro", end:"endereço", cidade:"cidade", cep:"CEP", obs:"particularidades" };
+(function(){
+  const fic = { "101":["Academia","Lucro Presumido",3200,"Premium"], "102":["Varejo","Simples Nacional",2400,"Pro"], "103":["Varejo","Simples Nacional",2100,"Pro"],
+    "104":["Bijuterias","Simples Nacional",1600,"Pro"], "105":["Produção de conteúdo","Simples Nacional",1200,"Essencial"], "106":["Serviços","Simples Nacional",900,"Essencial"], "107":["Joias","Simples Nacional",1500,"Pro"] };
+  EMPRESAS.forEach(e => {
+    const f = fic[e.cod] || ["","Simples Nacional",0,"Essencial"];
+    Object.assign(e, { cnpj:`00.000.${e.cod}/0001-00`, status:e.cod === "107" ? "Implantação" : "Ativa", segmento:f[0], trib:f[1], honorario:f[2], plano:f[3],
+      inicio:"2025-0" + (1 + (+e.cod % 8)) + "-01", sistema:"Conta Azul Pro", grupo:`Financeiro ${e.nome} | Effective`, email:`financeiro@${e.nome.toLowerCase()}-exemplo.com.br`,
+      end:"Endereço fictício, 100 · Centro", cidade:"Cidade fictícia / UF", cep:"00000-000", obs:"",
+      socios:[{ nome:`Sócio A de ${e.nome} (fictício)`, doc:"000.000.000-00", part:"60%" }, { nome:`Sócio B de ${e.nome} (fictício)`, doc:"000.000.000-00", part:"40%" }],
+      contatos:[{ nome:`Contato financeiro ${e.nome}`, doc:"Gestor(a) financeiro", part:"(00) 00000-0000" }] });
+  });
+})();
+const brl = v => (+v || 0).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+let ccSit = "", fichaCod = null;
+function renderCadCli(){
+  const q = $("#ccQ").value.trim().toLowerCase();
+  const rows = EMPRESAS.filter(e => (!ccSit || e.status === ccSit) && (!q || (e.nome + " " + e.razao + " " + e.cnpj + " " + e.cod).toLowerCase().includes(q)));
+  const stc = { "Ativa":"t-ok", "Implantação":"t-warn", "Bloqueada":"t-bad", "Encerrada":"t-plain" };
+  $("#ccRows").innerHTML = rows.map(e => `<tr data-cc="${e.cod}">
+    <td class="emp"><b>${esc(e.nome)}</b><small>${e.cod} · ${esc(e.razao)}</small></td>
+    <td class="mono" style="font-family:ui-monospace,Consolas,monospace;font-size:12px">${esc(e.cnpj)}</td>
+    <td><span class="tag ${stc[e.status]}">${e.status}</span></td>
+    <td class="n">${brl(e.honorario)}</td>
+    <td>${e.vinc.map(p => `<span class="pp ${p}">${p}</span>`).join(" ")}</td>
+    <td style="font-size:12.5px;color:var(--ink2)">${esc(e.grupo)}</td></tr>`).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum cliente</td></tr>';
+}
+function linhasLista(id, arr, rotulos, travado){
+  $(id).innerHTML = arr.map((x, i) => `<div class="row" data-i="${i}">
+    <label>${rotulos[0]}<input data-k="nome" value="${esc(x.nome)}" ${travado ? "disabled" : ""}></label>
+    <label>${rotulos[1]}<input data-k="doc" value="${esc(x.doc)}" ${travado ? "disabled" : ""}></label>
+    <label>${rotulos[2]}<input data-k="part" value="${esc(x.part)}" ${travado ? "disabled" : ""}></label>
+    ${travado ? "<span></span>" : '<button type="button" data-rm title="Remover">×</button>'}</div>`).join("") || '<div class="zero" style="font-size:12px">Nenhum.</div>';
+}
+let rascunho = null;
+function abrirFicha(cod){
+  fecharDetalhe(); fecharSenhas();
+  const novo = !cod, adm = !!podeF(user(), "cliente_sensivel");
+  const e = novo ? { cod:"", nome:"", razao:"", cnpj:"", status:"Implantação", prio:"Normal", segmento:"", trib:"Simples Nacional", honorario:"", plano:"Pro", inicio:hojeISO(),
+                     sistema:"Conta Azul Pro", grupo:"", email:"", end:"", cidade:"", cep:"", obs:"", socios:[], contatos:[], vinc:[user()].filter(u => TODOS.includes(u)) } : emp(cod);
+  fichaCod = cod; rascunho = JSON.parse(JSON.stringify({ socios:e.socios, contatos:e.contatos, vinc:e.vinc }));
+  $("#fTit").textContent = novo ? "Novo cliente" : `${e.nome} · ${e.cod}`;
+  $("#fSub").innerHTML = novo ? '<span class="criada">Preencha os dados. CNPJ, razão social, honorário e sócios podem ser preenchidos por quem cadastra; depois só o Adm altera.</span>'
+    : `<span class="tag ${e.status === "Ativa" ? "t-ok" : "t-warn"}">${e.status}</span><span class="criada">${adm ? "Você é Adm: pode alterar tudo." : "Campos marcados SÓ ADM: peça ao Adm."}</span>`;
+  const f = $("#fForm");
+  Object.keys(ROTULO).forEach(k => { const el = f.elements[k]; if (!el) return; el.value = e[k] ?? ""; el.disabled = !novo && !adm && SENSIVEIS.includes(k); });
+  f.elements.cod.disabled = !novo;
+  linhasLista("#fSocios", rascunho.socios, ["Nome","CPF","Participação"], !novo && !adm);
+  linhasLista("#fContatos", rascunho.contatos, ["Nome","Função","Telefone"], false);
+  document.querySelector('[data-add="socios"]').hidden = !novo && !adm;
+  $("#fEquipe").innerHTML = TODOS.map(u => `<label><input type="checkbox" value="${u}" ${rascunho.vinc.includes(u) ? "checked" : ""}>${u}</label>`).join("");
+  $("#fEncerrar").hidden = novo;
+  $("#fEncerrar").textContent = adm ? "Encerrar cliente" : "Pedir encerramento ao Adm";
+  $("#fMsg").hidden = true;
+  $("#ficha").hidden = false;
+}
+function fecharFicha(){ $("#ficha").hidden = true; fichaCod = null; }
+function lerLista(id){ return [...document.querySelectorAll(id + " .row")].map(r => ({ nome:r.querySelector('[data-k="nome"]').value.trim(), doc:r.querySelector('[data-k="doc"]').value.trim(), part:r.querySelector('[data-k="part"]').value.trim() })).filter(x => x.nome); }
+function logCad(cod, txt){ registrar({ user:user(), emp:cod, trechos:[] }, "tar", txt); }
+$("#ficha").addEventListener("click", ev => {
+  const add = ev.target.closest("[data-add]");
+  if (add){ const k = add.dataset.add; rascunho[k] = k === "socios" ? lerLista("#fSocios") : lerLista("#fContatos"); rascunho[k].push({ nome:"", doc:"", part:"" });
+    linhasLista(k === "socios" ? "#fSocios" : "#fContatos", rascunho[k], k === "socios" ? ["Nome","CPF","Participação"] : ["Nome","Função","Telefone"], false);
+    const ins = document.querySelectorAll((k === "socios" ? "#fSocios" : "#fContatos") + " .row:last-child input"); if (ins[0]){ ins[0].value = ""; ins[0].focus(); } return; }
+  const rm = ev.target.closest("[data-rm]");
+  if (rm){ rm.closest(".row").remove(); }
+});
+$("#fFechar").onclick = fecharFicha;
+$("#fCanc").onclick = fecharFicha;
+$("#fForm").onsubmit = ev => {
+  ev.preventDefault();
+  const f = ev.target, adm = !!podeF(user(), "cliente_sensivel"), novo = !fichaCod;
+  const dados = {}; Object.keys(ROTULO).forEach(k => { if (f.elements[k]) dados[k] = f.elements[k].value.trim(); });
+  dados.honorario = +String(dados.honorario).replace(/\./g, "").replace(",", ".") || 0;
+  const vinc = [...document.querySelectorAll("#fEquipe input:checked")].map(i => i.value);
+  const socios = lerLista("#fSocios"), contatos = lerLista("#fContatos");
+  if (novo){
+    if (EMPRESAS.some(e => e.cod === dados.cod)){ $("#fMsg").hidden = false; $("#fMsg").textContent = "Já existe cliente com esse código."; return; }
+    const e = Object.assign({ prioN:PRIO[dados.prio].n, vinc, socios, contatos }, dados);
+    EMPRESAS.push(e); ROTINAS[e.cod] = { diarias:[], semanais:false, mensais:[] }; BANCO[e.cod] = "Itaú";
+    $("#fcEmp").insertAdjacentHTML("beforeend", `<option value="${e.cod}">${esc(e.nome)}</option>`);
+    $("#aEmp").insertAdjacentHTML("beforeend", `<option value="${e.cod}">${esc(e.nome)}</option>`);
+    logCad(e.cod, `cadastrou o cliente ${e.cod} - ${e.nome}`);
+    fecharFicha(); toast("Cliente cadastrado"); render(); return;
+  }
+  const e = emp(fichaCod), mud = [];
+  Object.keys(dados).forEach(k => {
+    if (k === "cod") return;
+    if (!adm && SENSIVEIS.includes(k)) return;
+    const antes = String(e[k] ?? ""), depois = String(dados[k] ?? "");
+    if (antes !== depois){ mud.push(`${ROTULO[k]}: ${k === "honorario" ? brl(antes) : antes || "vazio"} → ${k === "honorario" ? brl(depois) : depois || "vazio"}`); e[k] = dados[k]; }
+  });
+  if (dados.prio) e.prioN = PRIO[dados.prio].n;
+  if (JSON.stringify(contatos) !== JSON.stringify(e.contatos)){ e.contatos = contatos; mud.push("contatos atualizados"); }
+  if (adm && JSON.stringify(socios) !== JSON.stringify(e.socios)){ e.socios = socios; mud.push("sócios atualizados"); }
+  if (vinc.join() !== e.vinc.join()){ mud.push(`equipe: ${e.vinc.join(", ") || "ninguém"} → ${vinc.join(", ") || "ninguém"}`); e.vinc = vinc; }
+  if (e.status === "Encerrada" && !adm){ e.status = "Ativa"; }
+  mud.forEach(m => logCad(e.cod, `alterou o cadastro · ${m}`));
+  fecharFicha(); toast(mud.length ? `${mud.length} alteração(ões) salva(s)` : "Nada mudou"); render();
+};
+$("#fEncerrar").onclick = () => {
+  const e = emp(fichaCod);
+  if (!podeF(user(), "cliente_sensivel")){ logCad(e.cod, "pediu ao Adm o encerramento do cliente"); toast("Pedido registrado para o Adm"); return; }
+  perguntar(`Encerrar ${e.nome}?`, "O cliente sai da aba Tarefas e para de gerar tarefas. O cadastro e o histórico ficam guardados.",
+    [{ txt:`Encerrar ${e.nome}`, cls:"red", fn:() => { e.status = "Encerrada"; logCad(e.cod, "Adm encerrou o cliente"); fecharFicha(); } }, { txt:"Voltar" }], true);
+};
+$("#ccRows").addEventListener("click", ev => { const tr = ev.target.closest("tr[data-cc]"); if (tr) abrirFicha(tr.dataset.cc); });
+$("#ccNovo").onclick = () => { if (perm(user(), "cliente_cadastrar") !== "s"){ logCad(EMPRESAS[0].cod, "pediu ao Adm um cliente novo"); return toast("Pedido registrado para o Adm"); } abrirFicha(null); };
+$("#ccQ").addEventListener("input", render);
+$("#ccSit").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; ccSit = b.dataset.v;
+  document.querySelectorAll("#ccSit button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+
+/* ================= cadastro de senhas (visão de todos os clientes) ================= */
+let csTipo = new Set();
+$("#csTipos").innerHTML = STIPOS.map(t => `<button data-t="${t}">${t}</button>`).join("");
+const VELHA = 180 * 864e5;
+function renderCadSen(){
+  if (!$("#csEmp").options.length || $("#csEmp").options.length - 1 !== EMPRESAS.length){
+    const v = $("#csEmp").value;
+    $("#csEmp").innerHTML = '<option value="">Todos os clientes</option>' + EMPRESAS.map(e => `<option value="${e.cod}">${esc(e.nome)}</option>`).join("");
+    $("#csNEmp").innerHTML = EMPRESAS.filter(e => e.status !== "Encerrada").map(e => `<option value="${e.cod}">${e.cod} · ${esc(e.nome)}</option>`).join("");
+    $("#csEmp").value = v;
+  }
+  const fe = $("#csEmp").value, q = $("#csQ").value.trim().toLowerCase(), velhas = $("#csVelhas").checked, adm = !!podeF(user(), "senha_alterar");
+  const rows = ACESSOS.filter(a => (!fe || a.emp === fe) && (!csTipo.size || csTipo.has(a.tipo)) && (!velhas || now() - a.altEm > VELHA) &&
+    (!q || (a.sis + " " + a.usu + " " + a.obs + " " + nome(a.emp)).toLowerCase().includes(q)))
+    .sort((x, y) => x.emp.localeCompare(y.emp) || x.tipo.localeCompare(y.tipo));
+  $("#csRows").innerHTML = rows.map(a => { const dias = Math.floor((now() - a.altEm) / 864e5); return `<tr data-acc="${a.id}">
+    <td class="emp"><b>${esc(nome(a.emp))}</b><small>${a.emp}</small></td>
+    <td><span class="tipo">${a.tipo}</span> ${esc(a.sis)}${a.link ? ` <a class="mb lk" href="${esc(a.link)}" target="_blank" rel="noopener" data-act="link">abrir ↗</a>` : ""}${a.obs ? `<div class="zero" style="font-size:11.5px;white-space:normal;max-width:280px">${esc(a.obs)}</div>` : ""}</td>
+    <td><code>${esc(a.usu)}</code><button class="mb" data-act="cu">copiar</button></td>
+    <td><code>${sVis.has(a.id) ? esc(a.sen) : "••••••••"}</code><button class="mb" data-act="ver">${sVis.has(a.id) ? "ocultar" : "mostrar"}</button><button class="mb" data-act="cs">copiar</button></td>
+    <td class="${now() - a.altEm > VELHA ? "velha" : "zero"}" title="por ${a.altPor}">${dmy(iso(new Date(a.altEm)))}<div style="font-size:11px;font-weight:400">${dias} dias</div></td>
+    <td>${adm ? '<button class="mb" data-act="alt">alterar</button><button class="mb" data-act="exc">excluir</button>' : '<button class="mb" data-act="sol">solicitar alteração</button>'}</td></tr>`; }).join("")
+    || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum acesso com esse filtro</td></tr>';
+  const cons = REGS.filter(r => /senha|usuário|link|acesso/.test(r.texto)).slice(-12).reverse();
+  $("#csCons").innerHTML = cons.map(r => `<li><small>${dmy(iso(new Date(r.t)))} ${hhmm(r.t)} · ${r.user} · ${esc(nome(r.emp))}</small>${esc(r.texto)}</li>`).join("") || '<li class="vazio">Nenhuma consulta ainda.</li>';
+}
+$("#csRows").addEventListener("click", ev => {
+  const el = ev.target.closest("[data-act]"); if (!el) return;
+  acaoAcesso(ACESSOS.find(x => x.id === +el.closest("[data-acc]").dataset.acc), el.dataset.act);
+  renderCadSen();
+});
+["#csEmp","#csVelhas"].forEach(id => $(id).addEventListener("change", render));
+$("#csQ").addEventListener("input", render);
+$("#csTipos").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  csTipo.has(b.dataset.t) ? csTipo.delete(b.dataset.t) : csTipo.add(b.dataset.t); b.classList.toggle("on"); render(); });
+$("#csNovoAbrir").onclick = () => { if (perm(user(), "senha_cadastrar") !== "s"){ logAcesso({ emp:$("#csEmp").value || EMPRESAS[0].cod, sis:"acesso novo" }, "pediu ao Adm um acesso novo"); return toast("Pedido registrado para o Adm"); } $("#csNovo").hidden = false; if ($("#csEmp").value) $("#csNEmp").value = $("#csEmp").value; $("#csNSis").focus(); };
+$("#csNovoCanc").onclick = () => { $("#csNovo").hidden = true; $("#csNovo").reset(); };
+$("#csNovo").onsubmit = ev => {
+  ev.preventDefault();
+  const a = { id:++accId, emp:$("#csNEmp").value, sis:$("#csNSis").value.trim(), tipo:$("#csNTipo").value, link:$("#csNLink").value.trim(),
+    usu:$("#csNUsu").value.trim(), sen:$("#csNSen").value, obs:$("#csNObs").value.trim(), altEm:now(), altPor:user() };
+  if (!a.sis || !a.emp) return;
+  ACESSOS.push(a); logAcesso(a, "cadastrou o acesso"); $("#csNovo").reset(); $("#csNovo").hidden = true; render(); toast("Acesso salvo");
+};
+
+/* ================= cadastro de tarefas (rotinas por cliente) =================
+   Só o Adm cria, altera, pausa e exclui. Os demais consultam e pedem ao Adm.
+   Mudanças valem a partir de amanhã: as tarefas futuras ainda não concluídas são refeitas; as de hoje e as concluídas não mudam. */
+const ROT_LIST = []; let rotId = 0;
+(function(){
+  const ini = iso(new Date(diaUtil(0).getFullYear(), diaUtil(0).getMonth(), 1, 12));
+  const novaR = (emp, nome, tipo, resp, extra) => ROT_LIST.push(Object.assign({ id:++rotId, emp, nome, tipo, resp, diaSem:5, dia:null, meta:null,
+    checklist:[...(CHECKLISTS[nome] || [])], ativa:true, inicio:ini, fim:"" }, extra || {}));
+  Object.entries(ROTINAS).forEach(([cod, r]) => {
+    r.diarias.forEach(([nm, rs]) => novaR(cod, nm, "Diário", rs));
+    if (r.semanais) SEMANAIS.forEach(([nm, , rs]) => novaR(cod, nm, "Semanal", rs, { diaSem:5 }));
+    r.mensais.forEach(([nm, rs, dia, meta]) => novaR(cod, nm, "Mensal", rs, { dia, meta:meta || null }));
+  });
+  ["102","103"].forEach(cod => { novaR(cod, "Fechamento de caixa", "Quinzenal", ["Bruna"]); refazerFuturas(ROT_LIST[ROT_LIST.length - 1]); });
+})();
+const DSEM = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+const recRot = r => r.tipo === "Diário" ? "Diária · seg a sex" : r.tipo === "Semanal" ? `Semanal · toda ${DSEM[r.diaSem]}` : r.tipo === "Quinzenal" ? `Quinzenal · a cada 15 dias desde ${dmy(r.inicio)}` : `Mensal · entrega dia ${r.dia}` + (r.meta ? ` · meta dia ${r.meta}` : "");
+let ctTipo = new Set(), ctAt = "", rotAberta = null, rCk = [];
+$("#ctTipos").innerHTML = ["Diário","Semanal","Quinzenal","Mensal"].map(t => `<button data-t="${t}">${t}</button>`).join("");
+USERS.filter(u => u !== "Adm").forEach(u => $("#ctResp").insertAdjacentHTML("beforeend", `<option>${u}</option>`));
+function renderCadTar(){
+  const adm = !!podeF(user(), "rotina");
+  if ($("#ctEmp").options.length - 1 !== EMPRESAS.length){ const v = $("#ctEmp").value;
+    $("#ctEmp").innerHTML = '<option value="">Todos os clientes</option>' + EMPRESAS.map(e => `<option value="${e.cod}">${esc(e.nome)}</option>`).join(""); $("#ctEmp").value = v; }
+  $("#ctNova").textContent = adm ? "+ Nova rotina" : "Pedir rotina nova ao Adm";
+  $("#ctFoot").textContent = adm ? "Você é Adm: clique numa rotina para alterar, pausar ou excluir. Mudanças valem a partir de amanhã."
+                                 : "Só o Adm cadastra, altera ou exclui rotinas. Clique numa rotina para ver os detalhes ou pedir alteração.";
+  const fe = $("#ctEmp").value, fr = $("#ctResp").value, q = $("#ctQ").value.trim().toLowerCase();
+  const ordT = { "Diário":1, "Semanal":2, "Quinzenal":3, "Mensal":4 };
+  const rows = ROT_LIST.filter(r => (!fe || r.emp === fe) && (!fr || r.resp.includes(fr)) && (!ctTipo.size || ctTipo.has(r.tipo)) &&
+      (ctAt === "" || String(+r.ativa) === ctAt) && (!q || r.nome.toLowerCase().includes(q)))
+    .sort((a, b) => a.emp.localeCompare(b.emp) || ordT[a.tipo] - ordT[b.tipo] || a.nome.localeCompare(b.nome));
+  $("#ctRows").innerHTML = rows.map(r => `<tr data-rot="${r.id}" class="${r.ativa ? "" : "pausada"}">
+    <td class="emp"><b>${esc(nome(r.emp))}</b><small>${r.emp}</small></td>
+    <td>${esc(r.nome)} <span class="tipo">${r.tipo}</span></td>
+    <td style="font-size:12.5px">${recRot(r)}${r.fim ? `<div class="zero" style="font-size:11px">até ${dmy(r.fim)}</div>` : ""}</td>
+    <td>${r.resp.map(p => `<span class="pp ${p}">${p}</span>`).join(" ")}</td>
+    <td class="n">${r.checklist.length ? `${r.checklist.length} itens` : '<span class="zero">—</span>'}</td>
+    <td><span class="tag ${r.ativa ? "t-ok" : "t-plain"}">${r.ativa ? "Ativa" : "Pausada"}</span></td></tr>`).join("")
+    || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhuma rotina com esse filtro</td></tr>';
+}
+function renderRCk(edita){
+  $("#rCk").innerHTML = rCk.map((it, i) => `<li><span>${esc(it)}</span>${edita ? `<button type="button" class="rm" data-rmck="${i}" title="Remover">×</button>` : ""}</li>`).join("") || '<li class="zero">Sem checklist.</li>';
+}
+function mostrarCamposTipo(){ const tp = $("#rForm").elements.tipo.value; document.querySelectorAll("#rForm [data-so]").forEach(l => l.hidden = l.dataset.so !== tp); }
+function abrirRot(id){
+  fecharDetalhe(); fecharSenhas(); fecharFicha();
+  const adm = !!podeF(user(), "rotina"), novo = id === null;
+  const r = novo ? { emp:$("#ctEmp").value || "", nome:"", tipo:"Diário", resp:[], diaSem:5, dia:10, meta:null, checklist:[], ativa:true, inicio:iso(diaUtil(1)), fim:"" } : ROT_LIST.find(x => x.id === id);
+  rotAberta = novo ? null : id; rCk = [...r.checklist];
+  $("#rTit").textContent = novo ? "Nova rotina" : `${r.nome} · ${nome(r.emp)}`;
+  $("#rSub").innerHTML = novo ? '<span class="criada">Gera as tarefas automaticamente a partir da data escolhida.</span>'
+    : `<span class="tag ${r.ativa ? "t-ok" : "t-plain"}">${r.ativa ? "Ativa" : "Pausada"}</span><span class="criada">${recRot(r)}</span>`;
+  const f = $("#rForm"), el = f.elements;
+  el.nome.value = r.nome; el.tipo.value = r.tipo; el.diaSem.value = r.diaSem; el.dia.value = r.dia || ""; el.meta.value = r.meta || "";
+  el.inicio.value = r.inicio; el.fim.value = r.fim || ""; el.ativa.checked = r.ativa;
+  [...f.querySelectorAll("input,select")].forEach(i => i.disabled = !adm);
+  $("#rCliSec").querySelector("h5").textContent = novo ? "Clientes" : "Cliente";
+  $("#rClis").innerHTML = novo ? EMPRESAS.filter(e => e.status !== "Encerrada").map(e => `<label><input type="checkbox" value="${e.cod}" ${r.emp === e.cod ? "checked" : ""}>${esc(e.nome)}</label>`).join("")
+                                : `<span class="pp" style="background:var(--line2)">${esc(nome(r.emp))}</span>`;
+  $("#rResp").innerHTML = USERS.filter(u => u !== "Adm").map(u => `<label><input type="checkbox" value="${u}" ${r.resp.includes(u) ? "checked" : ""} ${adm ? "" : "disabled"}>${u}</label>`).join("");
+  renderRCk(adm); $("#rCkNovo").parentElement.hidden = !adm;
+  $("#rSalvar").textContent = adm ? "Salvar" : "Pedir alteração ao Adm";
+  $("#rSalvar").type = adm ? "submit" : "button";
+  $("#rExcluir").hidden = novo || !adm;
+  $("#rMsg").hidden = true;
+  mostrarCamposTipo();
+  $("#rotF").hidden = false;
+}
+function fecharRot(){ $("#rotF").hidden = true; rotAberta = null; }
+function logRot(cod, txt){ registrar({ user:user(), emp:cod, trechos:[] }, "tar", txt); }
+/* refaz as tarefas futuras (a partir de amanhã) de uma rotina */
+function refazerFuturas(r, apagarDe){
+  const amanha = iso(diaUtil(1));
+  const alvoDel = apagarDe || r;
+  for (let i = TAREFAS.length - 1; i >= 0; i--){
+    const t = TAREFAS[i];
+    if (t.emp === alvoDel.emp && t.nome === alvoDel.nome && t.tipo === alvoDel.tipo && t.prazo >= amanha && !concluida(t)) TAREFAS.splice(i, 1);
+  }
+  MESES_PRONTOS.forEach(k => { const ano = Math.floor(k / 12), mes = k % 12, ult = new Date(ano, mes + 1, 0).getDate();
+    for (let n = 1; n <= ult; n++){ const d = new Date(ano, mes, n, 12); if (iso(d) >= amanha) gerarNoDia(r, d); } });
+}
+$("#rForm").elements.tipo.addEventListener("change", mostrarCamposTipo);
+$("#rCkAdd").onclick = () => { const v = $("#rCkNovo").value.trim(); if (!v) return; rCk.push(v); $("#rCkNovo").value = ""; renderRCk(true); };
+$("#rCk").addEventListener("click", ev => { const b = ev.target.closest("[data-rmck]"); if (b){ rCk.splice(+b.dataset.rmck, 1); renderRCk(true); } });
+$("#rFechar").onclick = fecharRot; $("#rCanc").onclick = fecharRot;
+$("#rSalvar").addEventListener("click", ev => {
+  if (podeF(user(), "rotina")) return;                                  // Adm usa o submit
+  const r = rotAberta ? ROT_LIST.find(x => x.id === rotAberta) : null;
+  logRot(r ? r.emp : ($("#ctEmp").value || EMPRESAS[0].cod), r ? `pediu ao Adm alteração da rotina "${r.nome}"` : "pediu ao Adm uma rotina nova");
+  toast("Pedido registrado para o Adm"); fecharRot();
+});
+$("#rForm").onsubmit = ev => {
+  ev.preventDefault();
+  if (!podeF(user(), "rotina")) return;
+  const el = ev.target.elements, msg = t => { $("#rMsg").hidden = false; $("#rMsg").textContent = t; };
+  const d = { nome:el.nome.value.trim(), tipo:el.tipo.value, diaSem:+el.diaSem.value, dia:+el.dia.value || null, meta:+el.meta.value || null,
+    inicio:el.inicio.value, fim:el.fim.value, ativa:el.ativa.checked, checklist:[...rCk],
+    resp:[...document.querySelectorAll("#rResp input:checked")].map(i => i.value) };
+  if (!d.nome) return msg("Dê um nome à tarefa.");
+  if (!d.resp.length) return msg("Escolha pelo menos um responsável.");
+  if (d.tipo === "Mensal" && !d.dia) return msg("Informe o dia da entrega.");
+  if (d.tipo === "Mensal" && d.meta && d.meta > d.dia) return msg("A meta não pode ser depois da entrega.");
+  if (d.fim && d.fim < d.inicio) return msg("A data final é antes da inicial.");
+  if (d.tipo !== "Mensal"){ d.dia = null; d.meta = null; }
+  if (d.tipo === "Quinzenal" && !d.inicio) return msg("Informe a data de início da quinzena.");
+  if (rotAberta === null){
+    const clis = [...document.querySelectorAll("#rClis input:checked")].map(i => i.value);
+    if (!clis.length) return msg("Escolha pelo menos um cliente.");
+    clis.forEach(cod => { const r = Object.assign({ id:++rotId, emp:cod }, d); ROT_LIST.push(r); refazerFuturas(r); logRot(cod, `Adm cadastrou a rotina "${r.nome}" (${recRot(r)})`); });
+    fecharRot(); toast(`${clis.length} rotina(s) criada(s)`); render(); return;
+  }
+  const r = ROT_LIST.find(x => x.id === rotAberta), antes = { ...r, resp:[...r.resp], checklist:[...r.checklist] };
+  Object.assign(r, d);
+  const mud = [];
+  if (antes.nome !== r.nome) mud.push(`nome: ${antes.nome} → ${r.nome}`);
+  if (recRot(antes) !== recRot(r)) mud.push(`recorrência: ${recRot(antes)} → ${recRot(r)}`);
+  if (antes.resp.join() !== r.resp.join()) mud.push(`responsáveis: ${antes.resp.join(", ")} → ${r.resp.join(", ")}`);
+  if (antes.checklist.join("|") !== r.checklist.join("|")) mud.push("checklist alterado");
+  if (antes.ativa !== r.ativa) mud.push(r.ativa ? "reativada" : "pausada");
+  if (antes.inicio !== r.inicio || antes.fim !== r.fim) mud.push("vigência alterada");
+  refazerFuturas(r, antes);
+  mud.forEach(m => logRot(r.emp, `Adm alterou a rotina "${r.nome}" · ${m}`));
+  fecharRot(); toast(mud.length ? "Rotina atualizada · vale a partir de amanhã" : "Nada mudou"); render();
+};
+$("#rExcluir").onclick = () => {
+  const r = ROT_LIST.find(x => x.id === rotAberta); if (!r || !podeF(user(), "rotina")) return;
+  perguntar(`Excluir a rotina "${r.nome}" de ${nome(r.emp)}?`, "Para de gerar tarefas a partir de amanhã. As tarefas de hoje e as já concluídas ficam no histórico.",
+    [{ txt:"Excluir rotina", cls:"red", fn:() => { r.ativa = false; refazerFuturas(r); ROT_LIST.splice(ROT_LIST.indexOf(r), 1); logRot(r.emp, `Adm excluiu a rotina "${r.nome}"`); fecharRot(); } },
+     { txt:"Voltar" }], true);
+};
+$("#ctRows").addEventListener("click", ev => { const tr = ev.target.closest("tr[data-rot]"); if (tr) abrirRot(+tr.dataset.rot); });
+$("#ctNova").onclick = () => {
+  if (podeF(user(), "rotina")) return abrirRot(null);
+  logRot($("#ctEmp").value || EMPRESAS[0].cod, "pediu ao Adm uma rotina nova"); toast("Pedido registrado para o Adm");
+};
+["#ctEmp","#ctResp"].forEach(id => $(id).addEventListener("change", render));
+$("#ctQ").addEventListener("input", render);
+$("#ctTipos").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  ctTipo.has(b.dataset.t) ? ctTipo.delete(b.dataset.t) : ctTipo.add(b.dataset.t); b.classList.toggle("on"); render(); });
+$("#ctAtiva").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; ctAt = b.dataset.v;
+  document.querySelectorAll("#ctAtiva button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+
+/* ================= cadastro de colaboradores =================
+   Só o Adm cadastra, troca papel, muda vínculos e inativa. Inativo não entra no sistema; o histórico dele fica. */
+let ccoSit = "1", colAberto = null;
+function horasMes(u){
+  const h = diaUtil(0), ini = iso(new Date(h.getFullYear(), h.getMonth(), 1, 12));
+  let ms = 0;
+  TAREFAS.forEach(t => Object.entries(t.feitos).forEach(([p, f]) => { if (p === u && iso(new Date(f.em)) >= ini) ms += f.ms; }));
+  SESS.filter(x => x.user === u).forEach(x => ms += Math.max(0, ativo(x) - x.checkpoint));   // tempo ainda sem tarefa concluída
+  return ms / 36e5;
+}
+function renderCadCol(){
+  const adm = !!podeF(user(), "colaborador");
+  $("#ccoNovo").textContent = adm ? "+ Novo colaborador" : "Pedir colaborador novo ao Adm";
+  const lista = USERS.filter(u => ccoSit === "" || String(+P(u).ativo) === ccoSit);
+  $("#ccoRows").innerHTML = lista.map(u => {
+    const c = P(u), clis = veTodosClientes(u) ? "todos" : EMPRESAS.filter(e => e.vinc.includes(u) && e.status !== "Encerrada").map(e => e.nome).join(", ") || "—";
+    const rot = ROT_LIST.filter(r => r.ativa && r.resp.includes(u)).length, h = horasMes(u), pct = c.carga ? Math.min(100, h / c.carga * 100) : 0;
+    return `<tr data-col="${u}" class="${c.ativo ? "" : "pausada"}">
+      <td class="emp"><b><span class="pp ${u}">${esc(u)}</span></b><small>${esc(c.email)}</small></td>
+      <td>${c.papel}</td>
+      <td style="white-space:normal;max-width:260px;font-size:12.5px">${esc(clis)}</td>
+      <td class="n">${rot || '<span class="zero">0</span>'}</td>
+      <td>${c.carga ? `<div class="ocup"><div class="bar2"><i style="width:${pct}%"></i></div>${h.toFixed(1).replace(".", ",")} h / ${c.carga} h</div>` : '<span class="zero">sem carga definida</span>'}</td>
+      <td><span class="tag ${c.ativo ? "t-ok" : "t-plain"}">${c.ativo ? "Ativo" : "Inativo"}</span></td></tr>`;
+  }).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Ninguém aqui</td></tr>';
+  const editaPerm = !!P(user()).tudo;
+  const rot = v => v === "s" ? "sim" : v === "n" ? "não" : v === "p" ? "pede ao Adm" : v;
+  const cls = v => v === "s" ? "s" : v === "n" ? "n" : v === "p" ? "p" : "";
+  $("#ccoPapeis").innerHTML = `<table class="matriz"><thead><tr><th>${editaPerm ? "Você é Adm: altere direto na tabela" : ""}</th>${Object.keys(PAPEIS).map(p => `<th>${p}</th>`).join("")}</tr></thead>
+    <tbody>${PERM_LINHAS.map(l => `<tr><td>${l.t}</td>${Object.keys(PAPEIS).map(p => {
+      const v = PERM[p][l.k];
+      if (!editaPerm || p === "Administrador") return `<td><span class="${cls(v)}">${rot(v)}</span></td>`;
+      return `<td><select class="psel ${cls(v)}" data-pp="${p}" data-pk="${l.k}">${l.op.map(o => `<option value="${o}" ${o === v ? "selected" : ""}>${rot(o)}</option>`).join("")}</select></td>`;
+    }).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function abrirCol(u){
+  fecharDetalhe(); fecharSenhas(); fecharFicha(); fecharRot();
+  const adm = !!podeF(user(), "colaborador"), novo = u === null;
+  const c = novo ? { papel:"Estagiária", carga:120, email:"", ativo:true, inicio:hojeISO() } : P(u);
+  colAberto = u;
+  $("#cTit").textContent = novo ? "Novo colaborador" : u;
+  $("#cSub").innerHTML = novo ? '<span class="criada">O papel define o que a pessoa pode fazer.</span>'
+    : `<span class="tag ${c.ativo ? "t-ok" : "t-plain"}">${c.ativo ? "Ativo" : "Inativo"}</span><span class="criada">${c.papel}</span>`;
+  const el = $("#cForm").elements;
+  el.papel.innerHTML = Object.keys(PAPEIS).map(p => `<option>${p}</option>`).join("");
+  el.nome.value = novo ? "" : u; el.email.value = c.email; el.papel.value = c.papel; el.carga.value = c.carga; el.inicio.value = c.inicio;
+  [...$("#cForm").querySelectorAll("input,select")].forEach(i => i.disabled = !adm);
+  el.nome.disabled = !adm || !novo;
+  const todosCli = verTodosPapel(c.papel);
+  colVinc = novo ? [] : EMPRESAS.filter(e => e.vinc.includes(u)).map(e => e.cod);
+  colEdita = adm; renderVinc(todosCli);
+  $("#cCliHint").textContent = todosCli ? "Este papel já vê todos os clientes." : "Vê esses clientes na aba Tarefas.";
+  if (!novo){
+    const rots = ROT_LIST.filter(r => r.ativa && r.resp.includes(u));
+    $("#cResumo").innerHTML = `<h5>Responsável por ${rots.length} rotina(s)</h5>` + (rots.slice(0, 12).map(r => `<div class="lin"><span>${esc(nome(r.emp))}</span><span>${esc(r.nome)} <span class="tipo">${r.tipo}</span></span></div>`).join("") || '<div class="zero">Nenhuma.</div>') + (rots.length > 12 ? `<div class="zero">+${rots.length - 12}</div>` : "");
+  } else $("#cResumo").innerHTML = "";
+  const ehAdm = !!P(user()).tudo;
+  $("#cSenSec").hidden = !ehAdm;
+  $("#cSenBox").hidden = true; $("#cSenNova").value = ""; $("#cSenRedef").hidden = false;
+  $("#cSenInfo").innerHTML = novo ? "Defina a senha inicial ao salvar (botão abaixo)." :
+    `Senha guardada cifrada: nem o Adm consegue ler a atual. ${c.senhaEm ? `Última redefinição: <b>${dmy(iso(new Date(c.senhaEm)))} ${hhmm(c.senhaEm)}</b> por ${c.senhaPor}.` : "Nunca redefinida."}`;
+  $("#cSalvar").textContent = adm ? "Salvar" : "Pedir alteração ao Adm";
+  $("#cSalvar").type = adm ? "submit" : "button";
+  $("#cInativar").hidden = novo || !adm || u === "Adm";
+  $("#cInativar").textContent = c.ativo ? "Inativar colaborador" : "Reativar colaborador";
+  $("#cMsg").hidden = true;
+  $("#colF").hidden = false;
+}
+function fecharCol(){ $("#colF").hidden = true; colAberto = null; }
+let colVinc = [], colEdita = false;
+function renderVinc(todosCli){
+  if (todosCli){ $("#cClis").innerHTML = '<div class="zero" style="font-size:12.5px">Todos os clientes.</div>'; return; }
+  const ativos = EMPRESAS.filter(e => e.status !== "Encerrada");
+  $("#cClis").innerHTML = `<ul class="vlist">${colVinc.map(cod => `<li><b>${esc(nome(cod))}</b><span class="zero">${cod} · ${esc(emp(cod).razao)}</span>${colEdita ? `<button type="button" data-rmv="${cod}" title="Desvincular">×</button>` : ""}</li>`).join("") || '<li class="zero">Nenhum cliente vinculado.</li>'}</ul>` +
+    (colEdita ? `<select id="cAddCli"><option value="">+ vincular cliente…</option>${ativos.filter(e => !colVinc.includes(e.cod)).map(e => `<option value="${e.cod}">${e.cod} · ${esc(e.nome)}</option>`).join("")}</select>` : "");
+}
+$("#cClis").addEventListener("click", ev => { const b = ev.target.closest("[data-rmv]"); if (b){ colVinc = colVinc.filter(c => c !== b.dataset.rmv); renderVinc(false); } });
+$("#cClis").addEventListener("change", ev => { if (ev.target.id === "cAddCli" && ev.target.value){ colVinc.push(ev.target.value); renderVinc(false); } });
+function logCol(txt){ registrar({ user:user(), emp:EMPRESAS[0].cod, trechos:[] }, "tar", txt); }
+$("#cForm").elements.papel.addEventListener("change", ev => {
+  const todosCli = verTodosPapel(ev.target.value);
+  renderVinc(todosCli);
+  $("#cCliHint").textContent = todosCli ? "Este papel já vê todos os clientes." : "Vê esses clientes na aba Tarefas.";
+});
+$("#cFechar").onclick = fecharCol; $("#cCanc").onclick = fecharCol;
+$("#cSenRedef").onclick = () => { $("#cSenBox").hidden = false; $("#cSenRedef").hidden = true; $("#cSenNova").focus(); };
+$("#cSenGerar").onclick = () => { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"; $("#cSenNova").value = Array.from({ length:12 }, () => c[Math.floor(Math.random() * c.length)]).join(""); };
+$("#cSenCopiar").onclick = () => { if ($("#cSenNova").value) copiar($("#cSenNova").value); };
+$("#cSalvar").addEventListener("click", () => { if (podeF(user(), "colaborador")) return; logCol(`pediu ao Adm alteração ${colAberto ? "no cadastro de " + colAberto : "de colaborador novo"}`); toast("Pedido registrado para o Adm"); fecharCol(); });
+$("#cForm").onsubmit = ev => {
+  ev.preventDefault();
+  if (!podeF(user(), "colaborador")) return;
+  const el = ev.target.elements, msg = t => { $("#cMsg").hidden = false; $("#cMsg").textContent = t; };
+  const n = el.nome.value.trim(), papel = el.papel.value, clis = [...colVinc];
+  const dados = { papel, email:el.email.value.trim(), carga:+el.carga.value || 0, inicio:el.inicio.value };
+  if (colAberto === null){
+    if (!/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ]*$/.test(n)) return msg("Use só letras no nome.");
+    if (PESSOAS[n]) return msg("Já existe colaborador com esse nome.");
+    const ns = $("#cSenNova").value; if (!ns || ns.length < 8) return msg("Defina a senha inicial (mínimo 8 caracteres) em Redefinir senha.");
+    PESSOAS[n] = comPapel(Object.assign({ ativo:true, senhaEm:now(), senhaPor:user() }, dados)); USERS.push(n);
+    if (!verTodosPapel(papel)) TODOS.push(n);
+    EMPRESAS.forEach(e => { if (clis.includes(e.cod)) e.vinc.push(n); });
+    opcoesUsuario(); $("#ctResp").insertAdjacentHTML("beforeend", `<option>${n}</option>`); $("#aResp").insertAdjacentHTML("beforeend", `<option>${n}</option>`); $("#fcUser").insertAdjacentHTML("beforeend", `<option>${n}</option>`);
+    logCol(`Adm cadastrou o colaborador ${n} (${papel})`);
+    fecharCol(); toast("Colaborador cadastrado"); render(); return;
+  }
+  const u = colAberto, c = P(u), mud = [];
+  if (c.papel !== papel) mud.push(`papel: ${c.papel} → ${papel}`);
+  if (c.email !== dados.email) mud.push(`e-mail: ${c.email} → ${dados.email}`);
+  if (c.carga !== dados.carga) mud.push(`carga: ${c.carga} h → ${dados.carga} h`);
+  const ns = $("#cSenNova").value;
+  if (!$("#cSenBox").hidden && ns){ if (ns.length < 8) return msg("A senha precisa de pelo menos 8 caracteres."); c.senhaEm = now(); c.senhaPor = user(); mud.push("senha de acesso redefinida"); }
+  Object.assign(c, dados);
+  if (!c.tudo && !c.todosClientes){
+    EMPRESAS.forEach(e => { const tem = e.vinc.includes(u), quer = clis.includes(e.cod);
+      if (tem && !quer){ e.vinc = e.vinc.filter(x => x !== u); mud.push(`saiu de ${e.nome}`); }
+      if (!tem && quer){ e.vinc.push(u); mud.push(`entrou em ${e.nome}`); } });
+    if (!TODOS.includes(u)) TODOS.push(u);
+  }
+  mud.forEach(m => logCol(`Adm alterou ${u} · ${m}`));
+  fecharCol(); toast(mud.length ? "Colaborador atualizado" : "Nada mudou"); render();
+};
+$("#cInativar").onclick = () => {
+  const u = colAberto, c = P(u); if (!u || !podeF(user(), "colaborador")) return;
+  if (!c.ativo){ c.ativo = true; logCol(`Adm reativou ${u}`); opcoesUsuario(); fecharCol(); render(); return; }
+  const rots = ROT_LIST.filter(r => r.ativa && r.resp.includes(u) && r.resp.length === 1).length;
+  perguntar(`Inativar ${u}?`, `${u} deixa de entrar no sistema. O histórico fica guardado.${rots ? `<br><br><b>${rots} rotina(s)</b> têm só ${u} como responsável: transfira antes no cadastro de Tarefas.` : ""}`,
+    [{ txt:`Inativar ${u}`, cls:"red", fn:() => { c.ativo = false; logCol(`Adm inativou ${u}`); opcoesUsuario(); fecharCol(); } }, { txt:"Voltar" }], true);
+};
+$("#ccoRows").addEventListener("click", ev => { const tr = ev.target.closest("tr[data-col]"); if (tr) abrirCol(tr.dataset.col); });
+$("#ccoPapeis").addEventListener("change", ev => {
+  const sel = ev.target.closest(".psel"); if (!sel || !P(user()).tudo) return;
+  const papel = sel.dataset.pp, k = sel.dataset.pk, antes = PERM[papel][k], depois = sel.value;
+  PERM[papel][k] = depois;
+  const t = PERM_LINHAS.find(l => l.k === k).t, r = v => v === "s" ? "sim" : v === "n" ? "não" : v === "p" ? "pede ao Adm" : v;
+  logCol(`Adm alterou permissão · ${papel} · ${t}: ${r(antes)} → ${r(depois)}`);
+  toast("Permissão atualizada"); render();
+});
+$("#ccoNovo").onclick = () => { if (podeF(user(), "colaborador")) return abrirCol(null); logCol("pediu ao Adm um colaborador novo"); toast("Pedido registrado para o Adm"); };
+$("#ccoSit").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; ccoSit = b.dataset.v;
+  document.querySelectorAll("#ccoSit button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+
+/* ================= tamanho do texto (padrão 115%; preferência deste navegador) ================= */
+function aplicarZoom(z){
+  document.documentElement.style.setProperty("--zoom", z);
+  document.querySelectorAll("#fonte button").forEach(b => b.classList.toggle("on", b.dataset.z === String(z)));
+  try { localStorage.setItem("central-zoom", z); } catch(e){}
+}
+let zoomSalvo = "1.15"; try { zoomSalvo = localStorage.getItem("central-zoom") || "1.15"; } catch(e){}
+aplicarZoom(zoomSalvo);
+$("#fonte").addEventListener("click", ev => { const b = ev.target.closest("button"); if (b) aplicarZoom(b.dataset.z); });
+
+/* ================= tema claro / escuro (preferência só deste navegador) ================= */
+function aplicarTema(t){
+  if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+  document.querySelectorAll("#tema button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  try { localStorage.setItem("central-tema", t); } catch(e){}
+}
+let temaSalvo = ""; try { temaSalvo = localStorage.getItem("central-tema") || ""; } catch(e){}
+aplicarTema(temaSalvo);
+$("#tema").addEventListener("click", ev => { const b = ev.target.closest("button"); if (b) aplicarTema(b.dataset.t); });
+
+/* ================= tela do cliente ================= */
+let fMinhas = "", fTipos = new Set();
+const TIPOS = ["Diário","Semanal","Quinzenal","Mensal","Pontual"];
+$("#chipsTipo").innerHTML = TIPOS.map(t => `<button data-t="${t}">${t}</button>`).join("");
+$("#chipsTipo").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  fTipos.has(b.dataset.t) ? fTipos.delete(b.dataset.t) : fTipos.add(b.dataset.t); b.classList.toggle("on"); render(); });
+$("#segMinhas").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return;
+  fMinhas = b.dataset.v; document.querySelectorAll("#segMinhas button").forEach(x => x.classList.toggle("on", x === b)); render(); });
+
+const NOTAS = [];   // { emp, dia, user, t, texto }
+
+/* Concluir = checkpoint. Tempo da tarefa = tempo ativo agora − tempo ativo no checkpoint anterior. */
+function concluir(id){
+  const t = TAREFAS.find(x => x.id === id), u = user();
+  if (concluida(t) || !podeConcluir(u, t)) return;
+  const ck = checklist(t);
+  if (ck.itens.length && ck.marcados.some(m => !m)) return abrirDetalhe(id, "Marque todos os itens do checklist antes de concluir.");
+  if (diaFechado()) return avisoFechado();
+  let s = rodando(u);
+  if (!s || s.emp !== t.emp){ if (s) pausar(s); iniciar(u, t.emp); s = rodando(u); }
+  const agora = ativo(s), ms = agora - s.checkpoint;
+  s.checkpoint = agora; s.ultimaAtividade = now();
+  t.feitos[u] = { em:now(), ms };
+  hist(t, `${u} concluiu em ${fmt(ms)}`);
+  const atrasada = alvo(t) < hojeStr() ? ` (atrasada de ${dmy(alvo(t))})` : "";
+  const deOutro = !t.resp.includes(u) ? ` (responsável: ${t.resp.join(", ")})` : "";
+  registrar(s, "tar", `concluiu a tarefa "${t.nome}"${atrasada} em ${fmt(ms)}${deOutro}`);
+  recalc(); render();
+}
+
+function linhaTarefa(t){
+  const u = user(), feita = concluida(t), minha = t.resp.includes(u), pc = podeConcluir(u, t);
+  const qc = quemConcluiu(t), tempos = qc ? `${qc[0]} ${fmt(qc[1].ms)}` : "";
+  return `<li class="${feita ? "feita" : ""} ${fMinhas || minha || feita ? "" : "outra"}">
+    <button class="ck ${feita ? "on" : ""} ${pc ? "" : "alheia"}" data-id="${t.id}" ${feita || !pc ? "disabled" : ""} title="${feita ? "Concluída" : pc ? "Concluir" : "Só os responsáveis concluem esta tarefa"}">${feita ? "✓" : ""}</button>
+    <div><div class="tn" data-det="${t.id}">${esc(t.nome)}${checklist(t).itens.length ? ` <span class="ckc">☑ ${checklist(t).marcados.filter(Boolean).length}/${checklist(t).itens.length}</span>` : ""}</div>
+      <div class="tmeta"><span class="tipo">${t.tipo}</span>${t.resp.map(p => `<span class="pp ${p}">${p}</span>`).join("")}${
+        alvo(t) < hojeStr() ? `<span class="tag t-bad">${t.meta ? "meta venceu" : "venceu"} ${dmy(alvo(t))}</span>` : ""}${
+        t.meta ? `<span class="tag t-acc">meta ${dmy(t.meta)} · entrega ${dmy(t.prazo)}</span>` : ""}${
+        t.criadaPor ? `<span class="criada">criada por ${t.criadaPor}</span>` : ""}</div></div>
+    <div class="tr">${tempos}</div></li>`;
+}
+
+function renderEmpresa(){
+  const cod = aberta, u = user();
+  const passa = t => veTarefa(t, u) && (!fMinhas || t.resp.includes(u)) && (!fTipos.size || fTipos.has(t.tipo));
+  const ordem = (a, b) => concluida(a) - concluida(b) || b.resp.includes(u) - a.resp.includes(u);
+  const atr = TAREFAS.filter(t => t.emp === cod && alvo(t) < hojeStr() && !concluida(t) && passa(t)).sort(ordem);
+  const hoje = TAREFAS.filter(t => t.emp === cod && alvo(t) === hojeStr() && passa(t)).sort(ordem);
+  $("#listaAtras").innerHTML = atr.length ? `<div class="blk atr"><div class="blkhd">Atrasadas (${atr.length})</div><ul class="tasks">${atr.map(linhaTarefa).join("")}</ul></div>` : "";
+  $("#listaHoje").innerHTML = hoje.map(linhaTarefa).join("") || `<li style="display:block;color:var(--ink3)">Nenhuma tarefa para hoje${fMinhas || fTipos.size ? " com esse filtro" : ""}.</li>`;
+  const e = emp(cod);
+  $("#eProg").textContent = `${e.feitas}/${e.hoje} concluídas hoje${e.atras ? ` · ${e.atras} atrasada${e.atras > 1 ? "s" : ""}` : ""}`;
+
+  const dias = [...new Set(TAREFAS.filter(t => t.emp === cod && alvo(t) > hojeStr() && alvo(t) <= fimSemana() && passa(t)).map(alvo))].sort();
+  $("#semana").innerHTML = dias.map(d => {
+    const ts = TAREFAS.filter(t => t.emp === cod && alvo(t) === d && passa(t));
+    const dia = new Date(d + "T12:00").toLocaleDateString("pt-BR", { weekday:"short", day:"2-digit", month:"2-digit" });
+    const nd = ts.filter(t => t.tipo === "Diário").length, out = ts.filter(t => t.tipo !== "Diário");
+    return `<div class="sem-dia"><b>${dia}</b><div>${nd ? `<span class="zero">${nd} diária${nd > 1 ? "s" : ""}</span>` : ""}${
+      out.map(t => `<div>${esc(t.nome)} <span class="tipo">${t.tipo}</span> ${t.resp.map(p => `<span class="pp ${p}">${p}</span>`).join(" ")}</div>`).join("")}${!ts.length ? '<span class="zero">—</span>' : ""}</div></div>`;
+  }).join("") || `<div class="sem-dia"><span class="zero">Sem mais tarefas nesta semana.</span></div>`;
+
+  renderCal(passa);
+  $("#nLista").innerHTML = NOTAS.filter(n => n.emp === cod && n.dia === hojeISO()).reverse()
+    .map(n => `<li><small>${new Date(n.t).toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })} · ${n.user}</small>${esc(n.texto)}</li>`).join("");
+}
+document.querySelector("#v-empresa").addEventListener("click", ev => {
+  const b = ev.target.closest(".ck[data-id]"); if (b && !b.disabled) return concluir(+b.dataset.id);
+  const d = ev.target.closest("[data-det]"); if (d) abrirDetalhe(+d.dataset.det);
+});
+$("#nSalvar").onclick = () => {
+  const texto = $("#nTxt").value.trim(); if (!texto) return;
+  NOTAS.push({ emp:aberta, dia:hojeISO(), user:user(), t:now(), texto }); $("#nTxt").value = "";
+  const s = sessao(user(), aberta); if (s){ s.ultimaAtividade = now(); registrar(s, "tar", "registrou uma anotação"); }
+  render();
+};
+setInterval(() => { if (view !== "empresa") return; const s = rodando(user());
+  $("#eAtual b").textContent = s && s.emp === aberta ? fmt(ativo(s) - s.checkpoint) : "00:00:00"; }, 1000);
+
+function render(){ recalc(); $("#papel").textContent = P(user()).papel; if (view === "clientes") renderClientes(); if (view === "crono") renderCrono(); if (view === "home") renderHome(); if (view === "agenda") renderAgenda(); if (view === "cadcli") renderCadCli(); if (view === "cadsen") renderCadSen(); if (view === "cadtar") renderCadTar(); if (view === "cadcol") renderCadCol(); if (view === "empresa") renderEmpresa(); topo(); }
+
+function topo(){
+  const s = rodando(user());
+  $("#timer").classList.toggle("run", !!s);
+  $("#tEmp").textContent = s ? nome(s.emp) : "Nenhuma empresa aberta";
+  $("#tSt").textContent = s ? "rodando" : "";
+  $("#tVal").textContent = s ? fmt(ativo(s)) : "00:00:00";
+  $("#tPau").hidden = $("#tFim").hidden = !s;
+  $("#tEnc").hidden = !diaFechado(); $("#tEnc").textContent = diaFechado() ? `registro do dia fechado às ${HORA_FECHAMENTO}h` : "";
+}
+setInterval(() => { const s = rodando(user()); if (s) $("#tVal").textContent = fmt(ativo(s)); }, 1000);
+
+/* ================= diálogos e ações ================= */
+/* botoes: [{ txt, cls:"pri"|"red"|"", fn }] · perigo = cabeçalho vermelho */
+function perguntar(hd, txt, botoes, perigo = false){
+  const d = $("#dlg");
+  d.classList.toggle("perigo", perigo);
+  $("#dlgHd").textContent = hd; $("#dlgTxt").innerHTML = txt;
+  $("#dFt").innerHTML = ""; botoes.forEach(b => {
+    const el = document.createElement("button"); el.textContent = b.txt; if (b.cls) el.className = b.cls;
+    el.onclick = () => { d.close(); if (b.fn){ b.fn(); render(); } }; $("#dFt").appendChild(el);
+  });
+  d.showModal();
+}
+$("#dlg").addEventListener("cancel", ev => ev.preventDefault());   // Esc não fecha: tem que escolher
+
+function avisoFechado(){
+  perguntar("Registro de hoje fechado", `O registro de horas de hoje foi fechado às ${HORA_FECHAMENTO}h e está congelado. Amanhã o cronômetro volta do zero.`, [{ txt:"Entendi", cls:"pri" }]);
+}
+function confirmarFinalizar(s, depois){
+  perguntar(`Finalizar ${nome(s.emp)} por hoje?`,
+    `Tempo hoje: <b>${fmt(ativo(s))}</b> · ${incompletas(s.emp)}.<br>Se ainda vai voltar hoje, use <b>Pausar</b>.`,
+    [{ txt:`Finalizar ${nome(s.emp)}`, cls:"red", fn:() => { finalizar(s); depois(); } },
+     { txt:"Voltar" }], true);
+}
+
+/* Trava de saída: com o cronômetro rodando, nenhuma saída da empresa acontece sem pausar ou finalizar. */
+function sair(destino, cod){
+  const run = rodando(user());
+  if (!run) return ir(destino, cod);
+  if (destino === "empresa" && run.emp === cod) return ir(destino, cod);
+  const seguir = () => { if (destino === "empresa") iniciar(user(), cod); ir(destino, cod); };
+  perguntar(`Você está em ${nome(run.emp)}`,
+    `O cronômetro está rodando (${fmt(ativo(run))}). Antes de sair, escolha:`,
+    [{ txt:"Pausar · volto ainda hoje", cls:"pri", fn:() => { pausar(run); seguir(); } },
+     { txt:"Finalizar · terminei por hoje", cls:"red", fn:() => { finalizar(run); seguir(); } },
+     { txt:`Continuar em ${nome(run.emp)}` }]);
+}
+function entrar(cod){
+  if (diaFechado()) return avisoFechado();
+  if (rodando(user())) return sair("empresa", cod);
+  const s = sessao(user(), cod);
+  if (s && s.estado === "finalizada")
+    return perguntar(`Reabrir ${nome(cod)}?`, `Você finalizou ${esc(nome(cod))} às <b>${hhmm(s.finalizadaEm)}</b>. Reabrir volta a contar o tempo e fica registrado.`,
+      [{ txt:`Reabrir ${nome(cod)}`, cls:"pri", fn:() => { iniciar(user(), cod); ir("empresa", cod); } }, { txt:"Cancelar" }]);
+  iniciar(user(), cod); ir("empresa", cod);
+}
+
+$("#rows").addEventListener("click", ev => { const tr = ev.target.closest("tr[data-cod]"); if (tr) entrar(tr.dataset.cod); });
+$("#tPau").onclick = () => { pausar(rodando(user())); ir("clientes"); };
+$("#tFim").onclick = () => confirmarFinalizar(rodando(user()), () => ir("clientes"));
+window.addEventListener("beforeunload", ev => { if (rodando(user())){ ev.preventDefault(); ev.returnValue = ""; } });
+$("#sim22").onclick = () => { fecharDia(); ir("clientes"); };
+
+/* ================= filtros e ordenação ================= */
+$("#segSit").addEventListener("click", ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  fSit = b.dataset.v; document.querySelectorAll("#segSit button").forEach(x => x.classList.toggle("on", x === b)); render();
+});
+$("#user").addEventListener("change", () => { fecharDetalhe(); ir("home"); });
+$("#q").addEventListener("input", render);
+document.querySelectorAll("th[data-k]").forEach(th => th.addEventListener("click", () => {
+  const k = th.dataset.k; sortDir = k === sortK ? -sortDir : (k === "nome" ? 1 : -1); sortK = k; render();
+}));
+
+/* fechamento às 22h (no app real é um job no servidor) */
+setInterval(() => { if (new Date().getHours() >= HORA_FECHAMENTO && !diaFechado()){ fecharDia(); render(); } }, 60000);
+
+render();
+</script>
+</body>
+</html>

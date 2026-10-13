@@ -1,0 +1,64 @@
+# ─────────────────────────────────────────────────────────────
+#  Central BPO · .gitignore
+# ─────────────────────────────────────────────────────────────
+
+# Referências internas (prints de sistemas de terceiros, dados de clientes).
+# Ficam só na máquina: nunca vão para o repositório.
+refs_hub/
+
+# Documentos com dados reais da operação (horas, clientes, equipe): só local.
+docs/mapa-central-bpo.html
+
+# Segredos e variáveis de ambiente — NUNCA versionar.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node / Next.js (fase do app)
+node_modules/
+.next/
+out/
+build/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vercel
+.vercel/
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Python (scripts auxiliares)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Logs e arquivos temporários
+*.log
+tmp/
+*.tmp
+
+# Base do esquema operacional usada nos testes: vem do repositório do Agente (tem dados internos).
+supabase/testes/base/
+
+# Gerados na publicação (config com a chave pública do ambiente e biblioteca copiada)
+app/config.js
+app/vendor/
