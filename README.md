@@ -2,7 +2,7 @@
 
 **Central de operação para BPO financeiro:** tarefas recorrentes por cliente, cronômetro por pessoa, calendário da operação, cofre de acessos e cadastros, tudo num lugar só e com trilha de quem fez o quê.
 
-> **Status:** protótipo navegável + **backend em Supabase** (tabelas, regras, permissões e 58 testes automáticos). Todos os nomes de clientes, pessoas, valores e acessos são **fictícios**. Próxima fase: app em Next.js + Supabase publicado na Vercel.
+> **Status:** protótipo navegável + **backend em Supabase** (tabelas, regras, permissões e 66 testes automáticos). Todos os nomes de clientes, pessoas, valores e acessos são **fictícios**. Próxima fase: app em Next.js + Supabase publicado na Vercel.
 
 ---
 
@@ -80,7 +80,7 @@ As regras de negócio completas estão em [`docs/regras-de-negocio.md`](docs/reg
 
 - Supabase/Postgres: 3 migrations com tabelas, funções de regra de negócio, RLS e views. Detalhes em [`supabase/README.md`](supabase/README.md).
 - O tempo de cada tarefa é calculado no banco, com o relógio do servidor; as senhas ficam cifradas, com a chave no Vault.
-- 58 testes automáticos num Postgres descartável (`npm run test:db`).
+- 66 testes automáticos num Postgres descartável (`npm run test:db`).
 
 **Destino (aplicação)**
 
@@ -103,7 +103,7 @@ CentralBPO/
 ├── supabase/
 │   ├── migrations/           # tabelas, regras (funções) e acesso (RLS + views)
 │   ├── agendamentos/         # pg_cron: fechamento das 22h e geração diária
-│   ├── testes/rodar.mjs      # 58 testes automáticos
+│   ├── testes/rodar.mjs      # 66 testes automáticos
 │   └── README.md             # como aplicar e quais funções o app chama
 ├── package.json              # npm run test:db
 ├── vercel.json               # publica o protótipo na raiz do site

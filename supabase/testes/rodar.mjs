@@ -132,6 +132,30 @@ const tEmail = await val(`select id from public.tarefas_operacionais where rotin
 const tReun = await val(`select id from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo = '2026-10-07'`, [r6.rotina_id]);
 const tAgenda = await val(`select id from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo = '2026-10-09'`, [r3.rotina_id]);
 
+
+// ---------- 3b. rotinas no formato que já existe no banco real ----------
+console.log("\n3b. Rotinas no formato do banco real (texto, vários dias, anual)");
+const mod = async (cod, nome, freq) => val(`insert into public.modelos_rotina (codigo, nome, frequencia, situacao) values ($1, $2, $3, 'ativa') returning id`, [cod, nome, freq]);
+const rotReal = async (nome, freq, regra) => val(`insert into public.rotinas_empresa (empresa_id, modelo_rotina_id, frequencia, regra_agendamento, situacao, vigencia_inicio) values ($1, $2, $3, $4::jsonb, 'ativa', '2026-01-01') returning id`,
+  [E.Alfa, await mod("real-" + nome, nome, freq === "anual" ? "anual" : freq), freq, regra]);
+const rqSexta = await rotReal("Revisar CP da semana", "semanal", '{"dia_semana": "sexta"}');
+const rqSegunda = await rotReal("Enviar relatório semanal", "semanal", '{"dia_semana": "segunda-feira"}');
+const rqDois = await rotReal("Recebimentos futuros", "mensal", '{"dias_mes": [1, 15]}');
+const rqAnual = await rotReal("Informe de rendimentos", "anual", '{"mes": 2, "dia_mes": 27}');
+const rqUteis = await rotReal("Conferir fluxo", "diaria", '{"dias": "uteis"}');
+const rqRuim = await rotReal("Regra quebrada", "semanal", '{"dia_semana": "xyz"}');
+const geradas = await val(`select public.central_gerar_tarefas('2026-10-01', '2027-03-31')`);
+checar("geração não quebra com as regras reais", geradas > 0, `(gerou ${geradas})`);
+const dias = async (r) => (await db.query(`select string_agg(to_char(prazo, 'DD/MM'), ',' order by prazo) d from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo <= '2026-10-31'`, [r])).rows[0].d;
+checar('semanal "sexta" cai às sextas', (await dias(rqSexta)) === "02/10,09/10,16/10,23/10,30/10", await dias(rqSexta));
+checar('semanal "segunda-feira" cai às segundas', (await dias(rqSegunda)) === "05/10,12/10,19/10,26/10", await dias(rqSegunda));
+checar("mensal com dias [1, 15]", (await dias(rqDois)) === "01/10,15/10", await dias(rqDois));
+checar("anual em 27/02/2027", (await val(`select string_agg(prazo::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [rqAnual])) === "2027-02-27");
+checar("diária {dias: uteis} só seg a sex", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1 and extract(isodow from prazo) > 5`, [rqUteis])) == 0);
+checar("regra inválida não gera e não derruba as outras", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1`, [rqRuim])) == 0 && true);
+await db.query(`update public.rotinas_empresa set situacao = 'pausada' where id = any($1::uuid[])`, [[rqSexta, rqSegunda, rqDois, rqAnual, rqUteis, rqRuim]]);
+await db.query(`delete from public.tarefas_operacionais where rotina_empresa_id = any($1::uuid[])`, [[rqSexta, rqSegunda, rqDois, rqAnual, rqUteis, rqRuim]]);
+
 // ---------- 4. cronômetro e tempo por tarefa ----------
 console.log("\n4. Cronômetro e tempo por tarefa (relógio do servidor)");
 await como(P.Ana); await hora("09:00:00");
@@ -238,6 +262,7 @@ const visAna = await val(`select string_agg(distinct empresa_nome, ',') from pub
 checar("Ana só vê a Alfa", visAna === "Alfa", visAna);
 await erro("Ana não lê a senha cifrada", `select senha_cifrada from public.central_acessos`, "permission denied");
 checar("Ana lê o acesso sem a senha", (await val(`select count(*) from public.central_acessos`)) == 1);
+await erro("app não grava pelas views", `delete from public.central_vw_sessoes`, "permission denied");
 await erro("app não grava direto nas tabelas", `insert into public.central_vinculos values ('${E.Beta}', '${P.Ana}')`, "permission denied");
 checar("histórico da Ana: só dela", (await val(`select count(distinct usuario_id) from public.central_vw_historico`)) == 1);
 await como(P.Carlos);
