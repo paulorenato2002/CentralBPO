@@ -6,6 +6,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Central BPO</title>
 <link rel="stylesheet" href="./estilo.css">
+<link rel="icon" id="favicon" href="data:,">
 <script src="./config.js"></script>
 <script src="./vendor/supabase.js"></script>
 <script type="module" src="./js/main.js"></script>
@@ -15,20 +16,37 @@
 <!-- ================= LOGIN ================= -->
 <div class="login" id="telaLogin" hidden>
   <form id="fLogin" autocomplete="on">
+    <img class="marca-logo" data-marca="logo" alt="" hidden>
     <h1>Central BPO</h1>
-    <p>Entre com o seu usuário.</p>
-    <label>E-mail<input type="email" id="lEmail" autocomplete="username" required></label>
-    <label>Senha<input type="password" id="lSenha" autocomplete="current-password" required></label>
+    <p id="lSub">Entre com o seu usuário.</p>
+    <label>E-mail<input type="email" id="lEmail" autocomplete="username" required maxlength="200"></label>
+    <label id="lSenhaRot">Senha<input type="password" id="lSenha" autocomplete="current-password" required maxlength="72"></label>
     <div class="erro" id="lErro" role="alert"></div>
+    <div class="ok" id="lOk" role="status" hidden></div>
     <button type="submit" id="lEntrar">Entrar</button>
+    <button type="button" class="link" id="lEsqueci">Esqueci minha senha</button>
+  </form>
+  <!-- aberto pelo link do e-mail de recuperação -->
+  <form id="fNova" autocomplete="off" hidden>
+    <img class="marca-logo" data-marca="logo" alt="" hidden>
+    <h1>Criar senha nova</h1>
+    <p>Mínimo 8 caracteres. Depois disso você já entra na Central.</p>
+    <label>Nova senha<input type="password" id="nvSenha" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+    <label>Repita a nova senha<input type="password" id="nvConf" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+    <div class="erro" id="nvErro" role="alert"></div>
+    <button type="submit" id="nvSalvar">Salvar senha e entrar</button>
   </form>
 </div>
 
-<div class="carregando" id="telaCarregando">Carregando…</div>
+<div class="carregando" id="telaCarregando" role="status" aria-live="polite">
+  <img class="marca-logo" data-marca="logo" alt="" hidden>
+  <div class="giro" aria-hidden="true"></div>
+  <span id="carregandoTxt">Carregando…</span>
+</div>
 
 <!-- ================= APP ================= -->
 <aside id="lateral" hidden>
-  <div class="brand">Central BPO<small id="marca">Operação</small></div>
+  <div class="brand"><img class="brand-ico" data-marca="icone" alt="" hidden><div>Central BPO<small id="marca">Operação</small></div></div>
   <a href="#" data-view="home">Home</a>
   <a href="#" data-view="clientes">Tarefas</a>
   <a href="#" data-view="agenda">Calendário</a>
