@@ -12,8 +12,12 @@ O backend **se apoia no esquema operacional que já existe** (empresas, perfis d
 | `migrations/…_central_bpo_regras.sql` | Funções com as regras: entrar, pausar e finalizar; concluir com tempo; checklist; datas; transferência; tarefa pontual; geração de tarefas pelas rotinas; clientes; acessos; colaboradores; permissões; fechamento das 22h; painel |
 | `migrations/…_central_bpo_acesso.sql` | RLS, views de leitura e quem pode chamar cada função |
 | `migrations/…_central_bpo_ajustes.sql` | Lê as regras no formato das rotinas que já existem ("sexta", dias [1, 15], anual) e deixa as views só para leitura |
+| `migrations/…_central_bpo_gestor_anual.sql` | O gestor financeiro também vê as tarefas anuais |
+| `migrations/…_central_bpo_seguranca.sql` | Tira do app a gravação direta em tarefas, tempos e rotinas; fixa o search_path das funções |
+| `migrations/…_central_bpo_leitura_empresas_perfis.sql` | Cada pessoa lê só os clientes que atende; ninguém muda o próprio papel |
+| `migrations/…_central_bpo_rotina_anual.sql` | A tela de Cadastros passa a salvar rotina anual (dia e mês) |
 | `agendamentos/central_bpo_cron.sql` | Rotinas agendadas (pg_cron): fechar o dia às 22h e gerar as tarefas às 05h |
-| `testes/rodar.mjs` | 76 testes automáticos num Postgres descartável |
+| `testes/rodar.mjs` | 79 testes automáticos num Postgres descartável |
 
 ## Princípios
 

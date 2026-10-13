@@ -4,6 +4,7 @@ import { E, cliente, nomeDe, segundosRodando } from "./estado.js";
 import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from "./ui.js";
 import * as Emp from "./empresa.js";
 import * as Painel from "./painel.js";
+import * as Cad from "./cadastros.js";
 
 /* ================= tema e tamanho do texto (preferência deste navegador) ================= */
 function preferencia(chave, padrao) { try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; } }
@@ -29,9 +30,11 @@ function mostrar(qual) {
   document.body.classList.toggle("app-off", !app);
 }
 
-const TITULOS = { home: "Home", clientes: "Tarefas", agenda: "Calendário", historico: "Histórico de atividade" };
+const TITULOS = { home: "Home", clientes: "Tarefas", agenda: "Calendário", historico: "Histórico de atividade",
+  cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores" };
 async function ir(view, id) {
   if (view !== "empresa") { Emp.fecharCartao(); Emp.fecharSenhas(); }
+  Cad.fechar();
   E.view = view; if (id) E.aberta = id;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + view));
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
@@ -42,6 +45,10 @@ async function ir(view, id) {
     if (view === "clientes") await desenharClientes();
     if (view === "empresa") await Emp.carregar();
     if (view === "historico") await desenharHistorico();
+    if (view === "cadcli") await Cad.desenharClientes();
+    if (view === "cadsen") await Cad.desenharSenhas();
+    if (view === "cadtar") await Cad.desenharRotinas();
+    if (view === "cadcol") await Cad.desenharColaboradores();
   } catch (e) { avisoErro(e); }
   Emp.topo();
 }
@@ -74,18 +81,13 @@ async function abrirApp() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return mostrar("login");
   E.hoje = hojeISO();
-  const [eu, colabs, perfis] = await Promise.all([
-    q(sb.from("central_colaboradores").select("usuario_id, papel_central, ativo").eq("usuario_id", user.id).maybeSingle()),
-    q(sb.from("central_colaboradores").select("usuario_id, papel_central, ativo")),
-    q(sb.from("perfis_usuarios").select("usuario_id, nome"))
-  ]).catch((e) => { avisoErro(e); return [null, [], []]; });
+  const eu = await q(sb.from("central_colaboradores").select("usuario_id, papel_central, ativo").eq("usuario_id", user.id).maybeSingle()).catch((e) => { avisoErro(e); return null; });
   if (!eu || !eu.ativo) {
     await sb.auth.signOut(); mostrar("login");
     $("#lErro").textContent = "Seu usuário não tem acesso ativo à Central. Fale com o administrador."; return;
   }
-  const nomes = new Map(perfis.map((p) => [p.usuario_id, p.nome]));
-  E.equipe = new Map(colabs.map((c) => [c.usuario_id, { nome: nomes.get(c.usuario_id) || "—", papel: c.papel_central, ativo: c.ativo }]));
-  E.eu = { id: user.id, nome: nomes.get(user.id) || user.email, email: user.email, papel: eu.papel_central };
+  await carregarEquipe();
+  E.eu = { id: user.id, nome: nomeDe(user.id) !== "—" ? nomeDe(user.id) : user.email, email: user.email, papel: eu.papel_central };
   const perm = await q(sb.from("central_permissoes").select("acao, valor").eq("papel_central", eu.papel_central));
   E.perm = Object.fromEntries(perm.map((p) => [p.acao, p.valor]));
   await carregarClientes();
@@ -94,6 +96,15 @@ async function abrirApp() {
   mostrar("app");
   await Emp.carregarSessoes();
   ir(E.rodando ? "empresa" : "home", E.rodando ? E.rodando.empresa_id : null);
+}
+
+async function carregarEquipe() {
+  const [colabs, perfis] = await Promise.all([
+    q(sb.from("central_colaboradores").select("usuario_id, papel_central, ativo")),
+    q(sb.from("perfis_usuarios").select("usuario_id, nome"))
+  ]);
+  const nomes = new Map(perfis.map((p) => [p.usuario_id, p.nome]));
+  E.equipe = new Map(colabs.map((c) => [c.usuario_id, { nome: nomes.get(c.usuario_id) || "—", papel: c.papel_central, ativo: c.ativo }]));
 }
 
 async function carregarClientes() {
@@ -171,7 +182,8 @@ async function desenharHistorico() {
 // redesenha a tela atual sem fechar o cartão (usado depois de mexer numa tarefa pelo cartão)
 const atualizar = () => (E.view === "home" ? Painel.desenharHome() : E.view === "agenda" ? Painel.desenharAgenda() : E.view === "clientes" ? desenharClientes() : Promise.resolve()).catch(avisoErro);
 Emp.iniciar({ ir, atualizar });
+Cad.iniciar({ recarregarBase: () => Promise.all([carregarClientes(), carregarEquipe()]), fecharOutras: () => { Emp.fecharCartao(); Emp.fecharSenhas(); } });
 Painel.iniciar({ entrar: (id) => Emp.entrar(id).catch(avisoErro), abrirCartao: (id) => Emp.abrirCartao(id).catch(avisoErro) });
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") mostrar("login"); });
 abrirApp().catch((e) => { avisoErro(e); mostrar("login"); });
-void nomeDe; void travar;
+void travar;

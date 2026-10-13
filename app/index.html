@@ -34,10 +34,10 @@
   <a href="#" data-view="agenda">Calendário</a>
   <a href="#" data-view="historico">Histórico</a>
   <div class="grp">Cadastros</div>
-  <a href="#" class="off" title="Etapa 3">Clientes</a>
-  <a href="#" class="off" title="Etapa 3">Senhas</a>
-  <a href="#" class="off" title="Etapa 3">Tarefas</a>
-  <a href="#" class="off" title="Etapa 3">Colaboradores</a>
+  <a href="#" data-view="cadcli">Clientes</a>
+  <a href="#" data-view="cadsen">Senhas</a>
+  <a href="#" data-view="cadtar">Tarefas</a>
+  <a href="#" data-view="cadcol">Colaboradores</a>
   <div class="me">
     <div id="eu" style="font-size:13px;color:var(--side-act)"></div>
     <div id="papel" style="font-size:11px;opacity:.7;margin-top:2px"></div>
@@ -163,6 +163,93 @@
     <div class="foot"><span>Diárias aparecem somadas por dia. ◎ meta · ▸ entrega. Clique numa tarefa para abrir o cartão.</span></div>
   </section>
 
+  <!-- ========== CADASTRO DE CLIENTES ========== -->
+  <section class="view" id="v-cadcli">
+    <div class="bar">
+      <div class="seg" id="ccSit"><button data-v="" class="on">Todos</button><button data-v="ativa">Ativos</button><button data-v="implantacao">Implantação</button><button data-v="bloqueada">Bloqueados</button><button data-v="encerrada">Encerrados</button></div>
+      <span class="sp"></span>
+      <input type="search" id="ccQ" placeholder="Buscar por nome, razão social ou CNPJ">
+      <button class="dbtn" id="ccNovo" style="margin:0" type="button">+ Novo cliente</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Cliente</th><th class="nosort">CNPJ</th><th class="nosort">Situação</th><th class="nosort n">Honorário mensal</th><th class="nosort">Equipe Effective</th><th class="nosort">Grupo principal</th></tr></thead>
+      <tbody id="ccRows"></tbody>
+    </table></div>
+    <div class="foot"><span>Campos marcados <span class="lock">só Adm</span> só o administrador altera; os demais viram pedido ao Adm. Toda alteração vai para o histórico.</span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE SENHAS (todos os clientes) ========== -->
+  <section class="view" id="v-cadsen">
+    <div class="bar">
+      <select id="csEmp"><option value="">Todos os clientes</option></select>
+      <div class="chips" id="csTipos"></div>
+      <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="csVelhas"> sem troca há mais de 180 dias</label>
+      <span class="sp"></span>
+      <input type="search" id="csQ" placeholder="Buscar sistema, usuário, observação">
+      <button class="dbtn" id="csNovoAbrir" style="margin:0" type="button">+ Novo acesso</button>
+    </div>
+    <form class="novo" id="csNovo" hidden autocomplete="off">
+      <select id="csNEmp" required aria-label="Cliente"></select>
+      <input id="csNSis" placeholder="Sistema (ex.: Banco Itaú)" required maxlength="200">
+      <select id="csNTipo" aria-label="Tipo"><option value="banco">Banco</option><option value="plataforma">Plataforma</option><option value="email">E-mail</option><option value="governo">Governo</option><option value="outro">Outro</option></select>
+      <input id="csNLink" placeholder="Link (https://…)" type="url">
+      <input id="csNUsu" placeholder="Usuário" autocomplete="off">
+      <input id="csNSen" type="password" placeholder="Senha" autocomplete="new-password">
+      <input id="csNObs" placeholder="Observações de acesso" style="flex:1;min-width:200px">
+      <button type="submit" class="pri">Salvar</button><button type="button" id="csNovoCanc">Cancelar</button>
+    </form>
+    <form class="novo" id="csAlt" hidden autocomplete="off">
+      <b id="csAltTit" style="font-size:13px"></b>
+      <input id="csASen" type="password" placeholder="Nova senha (deixe vazio para manter)" autocomplete="new-password">
+      <input id="csAUsu" placeholder="Usuário">
+      <input id="csALink" placeholder="Link" type="url">
+      <input id="csAObs" placeholder="Observações de acesso" style="flex:1;min-width:200px">
+      <button type="submit" class="pri">Salvar alteração</button><button type="button" id="csAltCanc">Cancelar</button>
+    </form>
+    <div class="cols" style="grid-template-columns:minmax(0,1fr)">
+      <div class="tbl"><table>
+        <thead><tr><th class="nosort">Cliente</th><th class="nosort">Acesso</th><th class="nosort">Usuário</th><th class="nosort">Senha</th><th class="nosort">Última troca</th><th class="nosort"></th></tr></thead>
+        <tbody id="csRows" class="static"></tbody>
+      </table></div>
+      <div class="blk"><div class="blkhd">Consultas recentes</div><ol class="feed cons" id="csCons" style="border:0"></ol></div>
+    </div>
+    <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado. Alterar e excluir: só Adm (os demais viram pedido).</span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE TAREFAS (rotinas) ========== -->
+  <section class="view" id="v-cadtar">
+    <div class="bar">
+      <select id="ctEmp"><option value="">Todos os clientes</option></select>
+      <select id="ctResp"><option value="">Todos os responsáveis</option></select>
+      <div class="chips" id="ctTipos"></div>
+      <div class="seg" id="ctAtiva"><button data-v="" class="on">Todas</button><button data-v="ativa">Ativas</button><button data-v="pausada">Pausadas</button></div>
+      <span class="sp"></span>
+      <input type="search" id="ctQ" placeholder="Buscar tarefa">
+      <button class="dbtn" id="ctNova" style="margin:0" type="button"></button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Cliente</th><th class="nosort">Tarefa</th><th class="nosort">Recorrência</th><th class="nosort">Responsáveis</th><th class="nosort n">Checklist</th><th class="nosort">Situação</th></tr></thead>
+      <tbody id="ctRows"></tbody>
+    </table></div>
+    <div class="foot"><span id="ctFoot"></span></div>
+  </section>
+
+  <!-- ========== CADASTRO DE COLABORADORES ========== -->
+  <section class="view" id="v-cadcol">
+    <div class="bar">
+      <div class="seg" id="ccoSit"><button data-v="1" class="on">Ativos</button><button data-v="0">Inativos</button><button data-v="">Todos</button></div>
+      <span class="sp"></span>
+      <button class="dbtn" id="ccoNovo" style="margin:0" type="button"></button>
+    </div>
+    <div class="blk" id="ccoPedidos" hidden><div class="blkhd">Pedidos ao Adm</div><ul class="tasks" id="ccoPedLista"></ul></div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Colaborador</th><th class="nosort">Papel</th><th class="nosort">Clientes</th><th class="nosort n">Rotinas</th><th class="nosort">Horas no mês × carga</th><th class="nosort">Situação</th></tr></thead>
+      <tbody id="ccoRows"></tbody>
+    </table></div>
+    <div class="blk" style="margin-top:16px"><div class="blkhd">O que cada papel pode fazer</div><div id="ccoPapeis" style="overflow:auto"></div></div>
+    <div class="foot"><span>Só o Adm cadastra colaborador, troca papel ou inativa; os demais consultam e pedem ao Adm.</span></div>
+  </section>
+
   <!-- ========== HISTÓRICO ========== -->
   <section class="view" id="v-historico">
     <div class="bar">
@@ -211,6 +298,113 @@
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+
+<!-- ========== FICHA DO CLIENTE ========== -->
+<div class="drawer largo" id="ficha" hidden>
+  <div class="dhd"><div><div class="dnome" id="fTit"></div><div class="tmeta" id="fSub"></div></div><button id="fFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="fMsg" hidden></div>
+  <form id="fForm" autocomplete="off">
+    <div class="dsec"><h5>Dados da empresa</h5>
+      <div class="fg">
+        <label>Código<input name="codigo" required maxlength="20"></label>
+        <label>Nome fantasia<input name="nome_fantasia" required maxlength="200"></label>
+        <label class="sens">Razão social<input name="razao_social" required maxlength="200"></label>
+        <label class="sens">CNPJ<input name="cnpj" placeholder="00.000.000/0000-00" required maxlength="18"></label>
+        <label>Situação<select name="situacao"><option value="implantacao">Implantação</option><option value="ativa">Ativa</option><option value="bloqueada">Bloqueada</option></select></label>
+        <label>Prioridade<select name="prioridade"><option value="alta">Alta</option><option value="normal">Normal</option><option value="baixa">Baixa</option></select></label>
+        <label>Segmento<input name="segmento" maxlength="100"></label>
+        <label>Tributação<select name="regime_tributario"><option value="">—</option><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option><option>MEI</option></select></label>
+      </div></div>
+    <div class="dsec"><h5>Contrato</h5>
+      <div class="fg">
+        <label class="sens">Honorário mensal (R$)<input name="honorario_mensal" inputmode="decimal"></label>
+        <label class="sens">Plano contratado<select name="plano"><option value="">—</option><option>Essencial</option><option>Pro</option><option>Premium</option></select></label>
+        <label>Início do contrato<input type="date" name="inicio_contrato"></label>
+        <label>Sistema financeiro<input name="sistema_financeiro" placeholder="Ex.: Conta Azul Pro" maxlength="100"></label>
+      </div></div>
+    <div class="dsec"><h5>Sócios <span class="lock">só Adm</span></h5><div id="fSocios" class="flist"></div>
+      <button type="button" class="fadd" data-add="socios">+ sócio</button></div>
+    <div class="dsec"><h5>Contatos do cliente</h5><div id="fContatos" class="flist"></div>
+      <button type="button" class="fadd" data-add="contatos">+ contato</button></div>
+    <div class="dsec"><h5>Comunicação</h5>
+      <div class="fg">
+        <label>Grupo principal (WhatsApp)<input name="grupo_principal" maxlength="200"></label>
+        <label>E-mail financeiro<input name="email_financeiro" type="email" maxlength="200"></label>
+      </div></div>
+    <div class="dsec"><h5>Equipe Effective atrelada</h5><div id="fEquipe" class="fequipe"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Quem está marcado vê o cliente na aba Tarefas.</div></div>
+    <div class="dsec"><h5>Endereço</h5>
+      <div class="fg"><label style="grid-column:1/-1">Rua, número, bairro<input name="endereco" maxlength="300"></label>
+        <label>Cidade / UF<input name="cidade" maxlength="100"></label><label>CEP<input name="cep" maxlength="10"></label></div></div>
+    <div class="dsec"><h5>Particularidades do cliente</h5><textarea name="particularidades" rows="3" maxlength="4000" placeholder="Ex.: pedidos de NF chegam sem centro de custo; fechamento de caixa quinzenal"></textarea></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="fSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="fCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="fEncerrar">Encerrar cliente</button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== ROTINA (cadastro de tarefa) ========== -->
+<div class="drawer largo" id="rotF" hidden>
+  <div class="dhd"><div><div class="dnome" id="rTit"></div><div class="tmeta" id="rSub"></div></div><button id="rFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="rMsg" hidden></div>
+  <form id="rForm" autocomplete="off">
+    <div class="dsec"><h5>Tarefa</h5>
+      <div class="fg">
+        <label style="grid-column:1/-1">Nome da tarefa<input name="nome" required maxlength="200" placeholder="Ex.: Conciliar banco"></label>
+        <label>Tipo<select name="tipo"><option value="diaria">Diária (seg a sex)</option><option value="semanal">Semanal</option><option value="quinzenal">Quinzenal (a cada 15 dias)</option><option value="mensal">Mensal</option><option value="anual">Anual</option></select></label>
+        <label data-so="semanal">Dia da semana<select name="diaSem"><option value="1">segunda</option><option value="2">terça</option><option value="3">quarta</option><option value="4">quinta</option><option value="5">sexta</option></select></label>
+        <label data-so="mensal anual">Dia da entrega<input type="number" name="dia" min="1" max="31"></label>
+        <label data-so="mensal">Dia da meta (opcional)<input type="number" name="meta" min="1" max="31" placeholder="pronto até"></label>
+        <label data-so="anual">Mês<select name="mes"><option value="1">janeiro</option><option value="2">fevereiro</option><option value="3">março</option><option value="4">abril</option><option value="5">maio</option><option value="6">junho</option><option value="7">julho</option><option value="8">agosto</option><option value="9">setembro</option><option value="10">outubro</option><option value="11">novembro</option><option value="12">dezembro</option></select></label>
+        <label data-so="quinzenal" style="grid-column:1/-1;font-size:12px;color:var(--ink3)">Gera a cada 15 dias contando da data "Vale a partir de". Se cair no fim de semana, vai para a segunda.</label>
+        <label>Vale a partir de<input type="date" name="inicio" required></label>
+        <label>Até (opcional)<input type="date" name="fim"></label>
+      </div></div>
+    <div class="dsec" id="rCliSec"><h5>Clientes</h5><div class="fequipe" id="rClis"></div>
+      <div class="hint" id="rCliHint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Na criação dá para aplicar a vários clientes de uma vez: vira uma rotina por cliente.</div></div>
+    <div class="dsec"><h5>Responsáveis</h5><div class="fequipe" id="rResp"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Responsáveis = quem pode executar. Analista, supervisor, gestor e Adm podem executar qualquer uma.</div></div>
+    <div class="dsec"><h5>Checklist padrão</h5><ul class="dck" id="rCk"></ul>
+      <div class="dadd"><input id="rCkNovo" placeholder="+ item do checklist" maxlength="200"><button type="button" id="rCkAdd">Adicionar</button></div></div>
+    <div class="dsec"><label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="ativa"> Rotina ativa (gera tarefas)</label></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="rSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="rCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="rExcluir">Excluir rotina</button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== COLABORADOR ========== -->
+<div class="drawer" id="colF" hidden>
+  <div class="dhd"><div><div class="dnome" id="cTit"></div><div class="tmeta" id="cSub"></div></div><button id="cFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="cMsg" hidden></div>
+  <form id="cForm" autocomplete="off">
+    <div class="dsec"><h5>Dados</h5><div class="fg">
+      <label>Nome<input name="nome" required maxlength="120"></label>
+      <label>E-mail de login<input name="email" type="email" required maxlength="200"></label>
+      <label>Papel<select name="papel"><option value="estagiaria">Estagiária</option><option value="analista">Analista financeira</option><option value="supervisor">Supervisor</option><option value="gestor_financeiro">Gestor financeiro</option><option value="administrador">Administrador</option></select></label>
+      <label>Carga horária (h/mês)<input name="carga" type="number" min="0" max="260"></label>
+    </div></div>
+    <div class="dsec" id="cSenSec"><h5>Senha de acesso ao sistema</h5>
+      <div id="cSenInfo" style="font-size:12.5px;color:var(--ink2)"></div>
+      <div class="dadd" id="cSenBox" hidden><input id="cSenNova" placeholder="Nova senha (mín. 8 caracteres)" autocomplete="new-password" maxlength="72"><button type="button" id="cSenGerar">Gerar</button><button type="button" id="cSenCopiar">Copiar</button></div>
+      <button type="button" class="dbtn sec" id="cSenRedef">Redefinir senha</button></div>
+    <div class="dsec"><h5>Clientes vinculados</h5><div id="cClis"></div>
+      <div class="hint" id="cCliHint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Vê esses clientes na aba Tarefas.</div></div>
+    <div class="dsec" id="cResumo"></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="cSalvar">Salvar</button>
+      <button class="dbtn sec" type="button" id="cCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="cInativar"></button>
+    </div>
+  </form>
+</div>
 
 <dialog id="dlg">
   <div class="hd" id="dlgHd"></div>
