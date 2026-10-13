@@ -34,7 +34,7 @@ const TITULOS = { home: "Home", clientes: "Tarefas", agenda: "Calendário", hist
   cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores" };
 async function ir(view, id) {
   if (view !== "empresa") { Emp.fecharCartao(); Emp.fecharSenhas(); }
-  Cad.fechar();
+  Cad.fechar(); $("#minhaSenha").hidden = true;
   E.view = view; if (id) E.aberta = id;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + view));
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
@@ -75,6 +75,30 @@ $("#bSair").onclick = async () => {
   if (E.rodando) return toast("Pause ou finalize o cliente antes de sair do sistema.");
   await sb.auth.signOut(); location.reload();
 };
+
+/* ================= trocar a própria senha =================
+   Confere a senha atual (entrando de novo) antes de gravar a nova: um computador esquecido logado não basta. */
+const avisoSenha = (t) => { $("#msMsg").hidden = !t; $("#msMsg").textContent = t || ""; };
+$("#bSenha").onclick = () => {
+  Emp.fecharCartao(); Emp.fecharSenhas(); Cad.fechar();
+  $("#fSenha").reset(); avisoSenha(""); $("#minhaSenha").hidden = false; $("#msAtual").focus();
+};
+$("#msFechar").onclick = $("#msCanc").onclick = () => { $("#fSenha").reset(); $("#minhaSenha").hidden = true; };
+$("#fSenha").onsubmit = (ev) => { ev.preventDefault(); travar($("#msSalvar"), async () => {
+  const atual = $("#msAtual").value, nova = $("#msNova").value, conf = $("#msConf").value;
+  if (nova.length < 8) return avisoSenha("A nova senha precisa de pelo menos 8 caracteres.");
+  if (nova !== conf) return avisoSenha("A confirmação não é igual à nova senha.");
+  if (nova === atual) return avisoSenha("A nova senha é igual à atual.");
+  const { error: errAtual } = await sb.auth.signInWithPassword({ email: E.eu.email, password: atual });
+  if (errAtual) return avisoSenha("Senha atual incorreta.");
+  const { error } = await sb.auth.updateUser({ password: nova });
+  if (error) {
+    const c = String(error.code || error.message || "");
+    return avisoSenha(/weak|pwned|leak/i.test(c) ? "Essa senha é fraca ou já apareceu em vazamentos. Escolha outra."
+      : /same/i.test(c) ? "A nova senha é igual à atual." : "Não deu para trocar a senha: " + error.message);
+  }
+  $("#fSenha").reset(); $("#minhaSenha").hidden = true; toast("Senha trocada. Use a nova no próximo login.");
+})(); };
 
 async function abrirApp() {
   mostrar("carregando");
@@ -186,4 +210,4 @@ Cad.iniciar({ recarregarBase: () => Promise.all([carregarClientes(), carregarEqu
 Painel.iniciar({ entrar: (id) => Emp.entrar(id).catch(avisoErro), abrirCartao: (id) => Emp.abrirCartao(id).catch(avisoErro) });
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") mostrar("login"); });
 abrirApp().catch((e) => { avisoErro(e); mostrar("login"); });
-void travar;
+

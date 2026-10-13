@@ -41,6 +41,7 @@
   <div class="me">
     <div id="eu" style="font-size:13px;color:var(--side-act)"></div>
     <div id="papel" style="font-size:11px;opacity:.7;margin-top:2px"></div>
+    <button class="sair-link" id="bSenha" type="button">Trocar minha senha</button>
     <button class="sair-link" id="bSair" type="button">Sair do sistema</button>
     <div class="tema" id="fonte" title="Tamanho do texto"><button data-z="1">A</button><button data-z="1.15" style="font-size:12.5px">A</button><button data-z="1.3" style="font-size:14px">A</button><button data-z="1.45" style="font-size:15.5px">A</button></div>
     <div class="tema" id="tema" title="Tema"><button data-t="light">Claro</button><button data-t="dark">Escuro</button><button data-t="">Auto</button></div>
@@ -402,6 +403,24 @@
       <button class="dbtn sec" type="button" id="cCanc">Cancelar</button>
       <span class="sp" style="flex:1"></span>
       <button class="dbtn perigo" type="button" id="cInativar"></button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== TROCAR MINHA SENHA ========== -->
+<div class="drawer" id="minhaSenha" hidden>
+  <div class="dhd"><div><div class="dnome">Trocar minha senha</div><div class="tmeta"><span class="criada">Vale para o próximo login. Ninguém, nem o Adm, consegue ver a sua senha.</span></div></div><button id="msFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="msMsg" hidden></div>
+  <form id="fSenha" autocomplete="on">
+    <div class="dsec"><div class="fg" style="grid-template-columns:1fr">
+      <label>Senha atual<input type="password" id="msAtual" autocomplete="current-password" required maxlength="72"></label>
+      <label>Nova senha (mínimo 8 caracteres)<input type="password" id="msNova" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+      <label>Repita a nova senha<input type="password" id="msConf" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+    </div>
+    <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:8px">Dica: uma frase curta fica forte e fácil de lembrar (ex.: três palavras e um número). Não use a mesma senha de outro site.</div></div>
+    <div class="dfoot" style="display:flex;gap:8px">
+      <button class="dbtn" type="submit" id="msSalvar">Trocar senha</button>
+      <button class="dbtn sec" type="button" id="msCanc">Cancelar</button>
     </div>
   </form>
 </div>
