@@ -1,8 +1,9 @@
 // Prepara o app para publicar (Vercel) ou rodar local:
 //  1. app/config.js com a URL e a chave PÚBLICA do Supabase (anon/publishable). Nunca a service_role.
 //  2. app/vendor/supabase.js copiado do pacote instalado (o navegador não carrega script de fora).
+//  3. dist/app/ = cópia só do app: é a única coisa que a Vercel publica (migrations, docs e protótipo ficam fora).
 // Variáveis: NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY (ambiente ou .env.local).
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync, cpSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,4 +27,6 @@ writeFileSync(resolve(RAIZ, "app/config.js"),
   `// gerado por scripts/gerar-config.mjs — não editar, não versionar\nwindow.CENTRAL_CONFIG = Object.freeze(${JSON.stringify({ url, anonKey: chave })});\n`);
 mkdirSync(resolve(RAIZ, "app/vendor"), { recursive: true });
 copyFileSync(resolve(RAIZ, "node_modules/@supabase/supabase-js/dist/umd/supabase.js"), resolve(RAIZ, "app/vendor/supabase.js"));
-console.log(`app/config.js gerado para ${new URL(url).host} · supabase-js copiado para app/vendor`);
+rmSync(resolve(RAIZ, "dist"), { recursive: true, force: true });
+cpSync(resolve(RAIZ, "app"), resolve(RAIZ, "dist/app"), { recursive: true });
+console.log(`app/config.js gerado para ${new URL(url).host} · supabase-js copiado para app/vendor · dist/app pronto`);
