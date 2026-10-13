@@ -59,7 +59,9 @@ await db.exec(ler(join(BASE, "baseline", "0000_baseline_existente_TESTE.sql")).r
 for (const f of readdirSync(join(BASE, "migrations")).filter((f) => /^20260826120\d00_.*\.sql$/.test(f)).sort()) {
   await db.exec(ler(join(BASE, "migrations", f)));
 }
-console.log("  base operacional aplicada");
+// espelha o banco real: empresas com RLS ligada e sem política nenhuma
+await db.exec(`alter table public.empresas enable row level security;`);
+console.log("  base operacional aplicada (empresas com RLS como no banco real)");
 for (const f of readdirSync(join(RAIZ, "supabase", "migrations")).filter((f) => f.endsWith(".sql")).sort()) {
   await db.exec(ler(join(RAIZ, "supabase", "migrations", f)));
   console.log(`  ${f}`);
@@ -266,6 +268,11 @@ await erro("app não marca tarefa como concluída direto na tabela", `update pub
 await erro("app não mexe no tempo direto", `update public.apontamentos_tempo set fim = now()`, "permission denied");
 await erro("app não cria rotina direto", `insert into public.rotinas_empresa (empresa_id, modelo_rotina_id) values ('${E.Alfa}', '${E.Alfa}')`, "permission denied");
 await erro("auxiliar interna fora da API", `select public.central_hms(10)`, "permission denied");
+await erro("ninguém se promove a administrador", `update public.perfis_usuarios set papel = 'administrador' where usuario_id = '${P.Ana}'`, "permission denied");
+await erro("ninguém se reativa sozinho", `update public.perfis_usuarios set ativo = true where usuario_id = '${P.Ana}'`, "permission denied");
+checar("cada um ainda edita o próprio nome", (await db.query(`update public.perfis_usuarios set nome = 'Ana' where usuario_id = $1`, [P.Ana])).affectedRows === 1);
+checar("Ana lê o nome do cliente dela na lista de tarefas", (await val(`select count(*) from public.central_vw_tarefas where empresa_nome = 'Alfa'`)) > 0);
+checar("Ana não lê a Beta na tabela de empresas", (await val(`select count(*) from public.empresas where nome_fantasia = 'Beta'`)) == 0);
 await erro("app não grava pelas views", `delete from public.central_vw_sessoes`, "permission denied");
 await erro("app não grava direto nas tabelas", `insert into public.central_vinculos values ('${E.Beta}', '${P.Ana}')`, "permission denied");
 checar("histórico da Ana: só dela", (await val(`select count(distinct usuario_id) from public.central_vw_historico`)) == 1);
