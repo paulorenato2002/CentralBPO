@@ -61,6 +61,10 @@ for (const f of readdirSync(join(BASE, "migrations")).filter((f) => /^2026082612
 }
 // espelha o banco real: empresas com RLS ligada e sem política nenhuma
 await db.exec(`alter table public.empresas enable row level security;`);
+// auth.role() igual à do Supabase (o baseline de teste só traz auth.uid())
+await db.exec(`create or replace function auth.role() returns text language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'))::text $$;
+  grant execute on function auth.role() to anon, authenticated, service_role;`);
 console.log("  base operacional aplicada (empresas com RLS como no banco real)");
 for (const f of readdirSync(join(RAIZ, "supabase", "migrations")).filter((f) => f.endsWith(".sql")).sort()) {
   await db.exec(ler(join(RAIZ, "supabase", "migrations", f)));
@@ -303,6 +307,38 @@ await como(P.Ana);
 await erro("estagiária não reordena", `select public.central_ordenar_rotinas('${E.Alfa}', array['${r1.rotina_id}']::uuid[])`, "SEM_PERMISSAO");
 await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.Adm]);
 await erro("anual sem mês é recusada", `select public.central_salvar_rotina(null, '${E.Beta}', 'Outra anual', 'anual', '{"dia_mes":5}', '2026-10-01', null, true, array['${P.Carlos}']::uuid[], null)`, "MES_INVALIDO");
+
+// ---------- 9. anotações do dia e resumo para o relatório ----------
+console.log("\n9. Anotações e resumo do dia");
+await db.exec(`reset role`);
+await dia("2026-10-07", "18:00:00");
+await como(P.Ana);
+const anot = await val(`select public.central_anotar($1, 'Extrato do Itaú divergente: conferir', array[$2]::uuid[], 'agente')`, [E.Alfa, P.Bruna]);
+const an = await um(`select para::text, origem, verificada_em from public.central_anotacoes where id = $1`, [anot]);
+checar("anotação com destinatário e origem do agente", an.para === `{${P.Bruna}}` && an.origem === "agente" && an.verificada_em === null, JSON.stringify(an));
+const semPara = await val(`select public.central_anotar($1, 'Pedir NF ao cliente')`, [E.Alfa]);
+checar("anotação sem destinatário fica com para vazio (= analistas do cliente)", (await val(`select para is null from public.central_anotacoes where id = $1`, [semPara])) === true);
+await erro("destinatário que não está na Central", `select public.central_anotar('${E.Alfa}', 'x', array['00000000-0000-0000-0000-000000000000']::uuid[])`, "DESTINO_INVALIDO");
+await erro("anotação em cliente que não atende", `select public.central_anotar('${E.Beta}', 'x')`, "SEM_ACESSO_CLIENTE");
+await como(P.Bruna);
+await db.query(`select public.central_verificar_anotacao($1)`, [anot]);
+checar("Bruna verifica a anotação", (await val(`select verificada_por from public.central_anotacoes where id = $1`, [anot])) === P.Bruna);
+const env1 = await val(`select public.central_marcar_anotacoes_enviadas(array[$1]::uuid[])`, [anot]);
+const env2 = await val(`select public.central_marcar_anotacoes_enviadas(array[$1]::uuid[])`, [anot]);
+checar("marca enviada uma vez só", env1 == 1 && env2 == 0, `${env1}/${env2}`);
+await como(P.Adm);
+const resAdm = (await db.query(`select * from public.central_resumo_dia('2026-10-07')`)).rows;
+const alfa = resAdm.find((r) => r.codigo === "101") || {};
+checar("resumo do dia por cliente (Alfa: concluídas e quem concluiu)", Number(alfa.concluidas_no_dia) >= 2 && (alfa.concluidas_por || {}).Ana >= 2, JSON.stringify(alfa));
+checar("resumo traz pendentes por tipo", typeof alfa.pendentes_por_tipo === "object" && alfa.pendentes_por_tipo !== null);
+checar("cliente encerrado não entra no resumo", !resAdm.some((r) => r.codigo === "102"));
+await como(P.Ana);
+checar("estagiária só vê o resumo dos clientes dela", (await db.query(`select codigo from public.central_resumo_dia('2026-10-07')`)).rows.every((r) => r.codigo === "101"));
+await db.query(`select set_config('request.jwt.claim.sub', '', false), set_config('request.jwt.claim.role', 'service_role', false)`);
+checar("rotina agendada (chave de serviço) vê todos os clientes ativos", (await db.query(`select * from public.central_resumo_dia('2026-10-07')`)).rows.length === resAdm.length);
+await db.query(`select set_config('request.jwt.claim.role', '', false)`);
+await como(P.Adm);
+checar("equipe com nome, e-mail e papel", (await val(`select count(*) from public.central_vw_equipe where email like '%@exemplo.com' and papel is not null`)) == 5);
 
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);
