@@ -16,6 +16,19 @@ const ultimoDoMes = (iso) => somaDias(primeiroDoMes(iso, 1), -1);
 const chipsTipo = () => Object.entries(TIPO).map(([k, v]) => `<button type="button" data-t="${k}">${v}</button>`).join("");
 const minha = (t) => (t.responsaveis || []).includes(E.eu.id);
 
+// Cor por cliente no calendário. O índice vem da ordem de E.clientes (que já vem
+// por código), então a cor de cada cliente não muda de uma sessão para outra.
+// São 6 faixas; com mais de 6 clientes a sétima volta à primeira — o nome
+// continua escrito ao lado, a cor é só para separar o bloco no olho.
+const corCli = (id) => {
+  const i = E.clientes.findIndex((c) => c.id === id);
+  return i < 0 ? "" : ` cl${i % 6}`;
+};
+// Letra do tipo de rotina: D S Q M A P. Serve para distinguir duas tarefas do
+// mesmo cliente no mesmo dia sem ter de ler o título inteiro.
+const LETRA = { diaria: "D", semanal: "S", quinzenal: "Q", mensal: "M", anual: "A", pontual: "P" };
+const selo = (t) => `<i class="tp t-${t.tipo_recorrencia}" title="${esc(TIPO[t.tipo_recorrencia] || "")}">${LETRA[t.tipo_recorrencia] || "·"}</i>`;
+
 export function iniciar(a) {
   app = a;
   iniciarHome(); iniciarAgenda();
@@ -185,7 +198,7 @@ export async function desenharAgenda() {
   const ev = (t, ds, comCliente = true) => {
     const tip = `${cliente(t.empresa_id).nome} · ${t.titulo} · ${TIPO[t.tipo_recorrencia] || ""} · ${(t.responsaveis || []).map(nomeDe).join(", ")}` +
       (t.data_meta ? ` · meta ${dmy(t.data_meta)}, entrega ${dmy(t.prazo)}` : "");
-    return `<span class="ev ${estadoCal(t)}" data-tid="${t.id}" data-abrir-t="${t.id}" title="${esc(tip)}" style="cursor:pointer">${marca(t, ds)}${comCliente ? `<span class="cli">${esc(cliente(t.empresa_id).nome)}</span>` : ""}${esc(t.titulo)}</span>`;
+    return `<span class="ev ${estadoCal(t)}${corCli(t.empresa_id)}" data-tid="${t.id}" data-abrir-t="${t.id}" title="${esc(tip)}" style="cursor:pointer">${marca(t, ds)}${selo(t)}${comCliente ? `<span class="cli">${esc(cliente(t.empresa_id).nome)}</span>` : ""}${esc(t.titulo)}</span>`;
   };
 
   let g = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"].map((d) => `<div class="dow">${d}</div>`).join("");
@@ -209,7 +222,7 @@ export async function desenharAgenda() {
       cods.forEach((id) => {
         const dc = di.filter((t) => t.empresa_id === id), oc = out.filter((t) => t.empresa_id === id);
         if (!dc.length && !oc.length) return;
-        c += `<div class="semcli">${esc(cliente(id).nome)}${dc.length ? ` · ${dc.filter(feita).length}/${dc.length} diárias` : ""}</div>` + oc.map((t) => ev(t, ds, false)).join("");
+        c += `<div class="semcli${corCli(id)}">${esc(cliente(id).nome)}${dc.length ? ` · ${dc.filter(feita).length}/${dc.length} diárias` : ""}</div>` + oc.map((t) => ev(t, ds, false)).join("");
       });
     }
     const fora = modo === "mes" && ds.slice(0, 7) !== mesRef;
