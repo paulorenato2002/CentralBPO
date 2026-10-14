@@ -17,14 +17,14 @@ function avisoGravacao(r, ok) {
   if (r && r.status === "parcial") return toast(`Salvo. Pedido ao Adm: ${(r.pedido_ao_adm || []).join(", ")}`);
   toast(ok);
 }
-const equipeAtiva = () => [...E.equipe.entries()].filter(([, x]) => x.ativo && x.papel !== "administrador");
+const equipeAtiva = () => [...E.equipe.entries()].filter(([, x]) => x.ativo);   // administrador também pode ser responsável
 const chips = (mapa) => Object.entries(mapa).map(([k, v]) => `<button type="button" data-t="${k}">${v}</button>`).join("");
 function liga(sel, set, depois) {      // segmentos e chips
   $(sel).addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (!b) return; set(b); depois(); });
 }
 
 export function iniciar(a) { app = a; iniciarClientes(); iniciarSenhas(); iniciarRotinas(); iniciarColaboradores(); }
-export function fechar() { ["#ficha", "#rotF", "#colF"].forEach((s) => ($(s).hidden = true)); }
+export function fechar() { ["#ficha", "#rotF", "#colF", "#acessoF"].forEach((s) => ($(s).hidden = true)); }
 const abrirGaveta = (sel) => { app.fecharOutras(); fechar(); $(sel).hidden = false; };
 
 /* ======================= CLIENTES ======================= */
@@ -107,7 +107,7 @@ function abrirFicha(id) {
   const travaSocios = !novo && !sens;
   linhasLista("#fSocios", c.socios || [], travaSocios); linhasLista("#fContatos", c.contatos || [], false);
   document.querySelector('[data-add="socios"]').hidden = travaSocios;
-  const gente = equipeAtiva().concat([...E.equipe.entries()].filter(([u, x]) => (c.equipe || []).includes(u) && !(x.ativo && x.papel !== "administrador")));
+  const gente = equipeAtiva().concat([...E.equipe.entries()].filter(([u, x]) => (c.equipe || []).includes(u) && !x.ativo));
   $("#fEquipe").innerHTML = gente.map(([u, x]) => `<label><input type="checkbox" value="${u}" ${(c.equipe || []).includes(u) ? "checked" : ""}>${esc(x.nome)}</label>`).join("") || '<span class="zero">Ninguém cadastrado.</span>';
   $("#fEncerrar").hidden = novo || c.situacao === "encerrada";
   $("#fEncerrar").textContent = sens ? "Encerrar cliente" : "Pedir encerramento ao Adm";
@@ -151,20 +151,12 @@ function iniciarSenhas() {
   liga("#csTipos", (b) => { csTipos.has(b.dataset.t) ? csTipos.delete(b.dataset.t) : csTipos.add(b.dataset.t); b.classList.toggle("on"); }, () => desenharSenhas(false).catch(avisoErro));
   ["#csEmp", "#csVelhas"].forEach((s) => $(s).addEventListener("change", () => desenharSenhas(false).catch(avisoErro)));
   $("#csQ").addEventListener("input", () => desenharSenhas(false).catch(avisoErro));
-  $("#csNovoAbrir").onclick = () => { $("#csAlt").hidden = true; $("#csNovo").hidden = false; if ($("#csEmp").value) $("#csNEmp").value = $("#csEmp").value; $("#csNSis").focus(); };
-  $("#csNovoCanc").onclick = () => { $("#csNovo").hidden = true; $("#csNovo").reset(); };
-  $("#csAltCanc").onclick = () => { $("#csAlt").hidden = true; $("#csAlt").reset(); acessoAlt = null; };
-  $("#csNovo").onsubmit = (ev) => { ev.preventDefault(); travar(ev.submitter || $("#csNovo .pri"), async () => {
-    const r = await rpc("central_salvar_acesso", { p_id: null, p_empresa: $("#csNEmp").value, p_sistema: $("#csNSis").value.trim(), p_tipo: $("#csNTipo").value,
-      p_link: $("#csNLink").value.trim() || null, p_usuario: $("#csNUsu").value.trim() || null, p_senha: $("#csNSen").value || null, p_observacoes: $("#csNObs").value.trim() || null });
-    $("#csNovo").reset(); $("#csNovo").hidden = true; avisoGravacao(r, "Acesso salvo"); await desenharSenhas();
-  })(); };
-  $("#csAlt").onsubmit = (ev) => { ev.preventDefault(); travar(ev.submitter || $("#csAlt .pri"), async () => {
-    const a = acessoAlt; if (!a) return;
-    const r = await rpc("central_salvar_acesso", { p_id: a.id, p_empresa: a.empresa_id, p_sistema: a.sistema, p_tipo: a.tipo,
-      p_link: $("#csALink").value.trim(), p_usuario: $("#csAUsu").value.trim(), p_senha: $("#csASen").value || null, p_observacoes: $("#csAObs").value.trim() });
-    $("#csAlt").reset(); $("#csAlt").hidden = true; acessoAlt = null; visiveis.delete(a.id); avisoGravacao(r, "Acesso alterado"); await desenharSenhas();
-  })(); };
+  $("#csNovoAbrir").onclick = () => abrirAcesso(null);
+  $("#aFechar").onclick = $("#aCanc").onclick = () => fecharAcesso();
+  $("#aVer").onclick = () => { const e = $("#aSen"); e.type = e.type === "password" ? "text" : "password"; $("#aVer").textContent = e.type === "password" ? "mostrar" : "ocultar"; };
+  $("#aGerar").onclick = () => { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%", n = new Uint32Array(16); crypto.getRandomValues(n); $("#aSen").value = Array.from(n, (x) => c[x % c.length]).join(""); $("#aSen").type = "text"; $("#aVer").textContent = "ocultar"; };
+  $("#aForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#aSalvar"), salvarAcesso)(); };
+  $("#aExcluir").onclick = () => { if (acessoAlt) acaoAcesso(acessoAlt, "exc").catch(avisoErro); };
   $("#csRows").addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-act]"); if (!el) return;
     const a = acessos.find((x) => x.id === el.closest("[data-acc]").dataset.acc); if (!a) return;
@@ -183,21 +175,16 @@ async function acaoAcesso(a, act) {
     await desenharSenhas(false); return carregarConsultas();
   }
   if (act === "sol") { const r = await rpc("central_salvar_acesso", { p_id: a.id, p_empresa: a.empresa_id, p_sistema: a.sistema, p_tipo: null, p_link: null, p_usuario: null, p_senha: null, p_observacoes: null }); return avisoGravacao(r, ""); }
-  if (act === "alt") {
-    acessoAlt = a; $("#csNovo").hidden = true; $("#csAlt").hidden = false;
-    $("#csAltTit").textContent = `${cliente(a.empresa_id).nome || ""} · ${a.sistema}`;
-    $("#csAUsu").value = a.usuario_login || ""; $("#csALink").value = a.link || ""; $("#csAObs").value = a.observacoes || ""; $("#csASen").value = ""; $("#csASen").focus(); return;
-  }
+  if (act === "alt") return abrirAcesso(a);
   if (act === "exc") {
     perguntar(`Excluir o acesso ${a.sistema}?`, "Some da lista de senhas do cliente. Fica registrado no histórico.",
-      [{ txt: "Excluir acesso", cls: "red", fn: async () => { const r = await rpc("central_excluir_acesso", { p_acesso: a.id }); avisoGravacao(r, "Acesso excluído"); await desenharSenhas(); } }, { txt: "Voltar" }], true);
+      [{ txt: "Excluir acesso", cls: "red", fn: async () => { const r = await rpc("central_excluir_acesso", { p_acesso: a.id }); avisoGravacao(r, "Acesso excluído"); fecharAcesso(); await desenharSenhas(); } }, { txt: "Voltar" }], true);
   }
 }
 
 export async function desenharSenhas(recarregar = true) {
   if ($("#csEmp").options.length === 1) {
     E.clientes.forEach((c) => $("#csEmp").insertAdjacentHTML("beforeend", `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`));
-    $("#csNEmp").innerHTML = E.clientes.map((c) => `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`).join("");
   }
   if (recarregar) {
     acessos = await todas(() => sb.from("central_acessos").select("id, empresa_id, sistema, tipo, link, usuario_login, observacoes, alterada_em, alterada_por").eq("ativo", true).order("id"));
@@ -219,6 +206,36 @@ export async function desenharSenhas(recarregar = true) {
     <td class="${d > VELHA ? "velha" : "zero"}" title="por ${esc(nomeDe(a.alterada_por))}">${dmy(a.alterada_em.slice(0, 10))}<div style="font-size:11px;font-weight:400">${d} dias</div></td>
     <td>${alt ? '<button class="mb" type="button" data-act="alt">alterar</button><button class="mb" type="button" data-act="exc">excluir</button>' : '<button class="mb" type="button" data-act="sol">solicitar alteração</button>'}</td></tr>`;
   }).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum acesso com esse filtro</td></tr>';
+}
+
+function fecharAcesso() { $("#acessoF").hidden = true; $("#aForm").reset(); acessoAlt = null; }
+function abrirAcesso(a) {
+  acessoAlt = a; app.fecharOutras(); fechar();
+  const novo = !a, f = $("#aForm").elements;
+  $("#aTit").textContent = novo ? "Novo acesso" : a.sistema;
+  $("#aSub").textContent = novo ? "A senha fica cifrada no banco. Cada consulta fica registrada." : `${cliente(a.empresa_id).nome} · alterado em ${dmy(a.alterada_em.slice(0, 10))} por ${nomeDe(a.alterada_por)}`;
+  $("#aEmp").innerHTML = E.clientes.map((c) => `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`).join("");
+  f.empresa.value = novo ? ($("#csEmp").value || (E.clientes[0] || {}).id || "") : a.empresa_id; f.empresa.disabled = !novo;
+  f.sistema.value = novo ? "" : a.sistema; f.tipo.value = novo ? "banco" : a.tipo;
+  f.link.value = novo ? "" : a.link || ""; f.usuario.value = novo ? "" : a.usuario_login || "";
+  f.senha.value = ""; f.senha.type = "password"; $("#aVer").textContent = "mostrar";
+  f.senha.placeholder = novo ? "" : "deixe em branco para manter a atual";
+  f.obs.value = novo ? "" : a.observacoes || "";
+  $("#aExcluir").hidden = novo || !permite("senha_alterar");
+  $("#aSalvar").textContent = novo ? "Salvar acesso" : permite("senha_alterar") ? "Salvar alteração" : "Pedir alteração ao Adm";
+  msg("#aMsg", "");
+  $("#acessoF").hidden = false; f.sistema.focus();
+}
+async function salvarAcesso() {
+  const f = $("#aForm").elements, a = acessoAlt;
+  const link = f.link.value.trim();
+  if (link && !linkSeguro(link)) return msg("#aMsg", "O link precisa começar com https:// ou http://");
+  if (!f.sistema.value.trim()) return msg("#aMsg", "Dê um nome ao acesso (ex.: Banco Itaú, Prefeitura).");
+  const r = await rpc("central_salvar_acesso", { p_id: a ? a.id : null, p_empresa: a ? a.empresa_id : f.empresa.value, p_sistema: f.sistema.value.trim(), p_tipo: f.tipo.value,
+    p_link: link, p_usuario: f.usuario.value.trim(), p_senha: f.senha.value || null, p_observacoes: f.obs.value.trim() });
+  if (a) visiveis.delete(a.id);
+  avisoGravacao(r, a ? "Acesso alterado" : "Acesso salvo");
+  fecharAcesso(); await desenharSenhas();
 }
 
 async function carregarConsultas() {

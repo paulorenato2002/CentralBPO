@@ -144,6 +144,7 @@
           <div class="seg" id="segMinhas"><button data-v="" class="on">Todas</button><button data-v="1">Só as minhas</button></div>
           <div class="chips" id="chipsTipo"></div>
           <button class="addp" id="pAbrir">+ Tarefa pontual</button>
+          <button class="addp" id="bOrdem" type="button" hidden>⇅ Ordenar tarefas</button>
           <span class="sp"></span>
           <span class="atual" id="eAtual" title="Tempo desde a última tarefa concluída (ou desde que entrou)">tarefa atual <b>00:00:00</b></span>
         </div>
@@ -207,24 +208,6 @@
       <input type="search" id="csQ" placeholder="Buscar sistema, usuário, observação">
       <button class="dbtn" id="csNovoAbrir" style="margin:0" type="button">+ Novo acesso</button>
     </div>
-    <form class="novo" id="csNovo" hidden autocomplete="off">
-      <select id="csNEmp" required aria-label="Cliente"></select>
-      <input id="csNSis" placeholder="Sistema (ex.: Banco Itaú)" required maxlength="200">
-      <select id="csNTipo" aria-label="Tipo"><option value="banco">Banco</option><option value="plataforma">Plataforma</option><option value="email">E-mail</option><option value="governo">Governo</option><option value="outro">Outro</option></select>
-      <input id="csNLink" placeholder="Link (https://…)" type="url">
-      <input id="csNUsu" placeholder="Usuário" autocomplete="off">
-      <input id="csNSen" type="password" placeholder="Senha" autocomplete="new-password">
-      <input id="csNObs" placeholder="Observações de acesso" style="flex:1;min-width:200px">
-      <button type="submit" class="pri">Salvar</button><button type="button" id="csNovoCanc">Cancelar</button>
-    </form>
-    <form class="novo" id="csAlt" hidden autocomplete="off">
-      <b id="csAltTit" style="font-size:13px"></b>
-      <input id="csASen" type="password" placeholder="Nova senha (deixe vazio para manter)" autocomplete="new-password">
-      <input id="csAUsu" placeholder="Usuário">
-      <input id="csALink" placeholder="Link" type="url">
-      <input id="csAObs" placeholder="Observações de acesso" style="flex:1;min-width:200px">
-      <button type="submit" class="pri">Salvar alteração</button><button type="button" id="csAltCanc">Cancelar</button>
-    </form>
     <div class="cols" style="grid-template-columns:minmax(0,1fr)">
       <div class="tbl"><table>
         <thead><tr><th class="nosort">Cliente</th><th class="nosort">Acesso</th><th class="nosort">Usuário</th><th class="nosort">Senha</th><th class="nosort">Última troca</th><th class="nosort"></th></tr></thead>
@@ -423,6 +406,37 @@
       <button class="dbtn perigo" type="button" id="cInativar"></button>
     </div>
   </form>
+</div>
+
+<!-- ========== ACESSO (cadastro de senha) ========== -->
+<div class="drawer" id="acessoF" hidden>
+  <div class="dhd"><div><div class="dnome" id="aTit"></div><div class="tmeta"><span class="criada" id="aSub"></span></div></div><button id="aFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="aMsg" hidden></div>
+  <form id="aForm" autocomplete="off">
+    <div class="dsec"><div class="fg">
+      <label style="grid-column:1/-1">Cliente<select name="empresa" id="aEmp" required></select></label>
+      <label>Acesso<input name="sistema" required maxlength="200" placeholder="Ex.: Banco Itaú · empresas"></label>
+      <label>Tipo<select name="tipo"><option value="banco">Banco</option><option value="plataforma">Plataforma</option><option value="email">E-mail</option><option value="governo">Governo</option><option value="outro">Outro</option></select></label>
+      <label style="grid-column:1/-1">Link de acesso<input name="link" type="url" maxlength="500" placeholder="https://"></label>
+      <label style="grid-column:1/-1">Usuário / login<input name="usuario" maxlength="200" autocomplete="off"></label>
+      <label style="grid-column:1/-1">Senha
+        <span style="display:flex;gap:6px"><input name="senha" id="aSen" type="password" maxlength="500" autocomplete="new-password" style="flex:1"><button type="button" class="mb" id="aVer">mostrar</button><button type="button" class="mb" id="aGerar">gerar</button></span></label>
+      <label style="grid-column:1/-1">Observações de acesso<textarea name="obs" rows="5" maxlength="4000" placeholder="Ex.: token com a Ana; dupla autenticação pelo celular do sócio; senha muda todo mês"></textarea></label>
+    </div></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit" id="aSalvar">Salvar acesso</button>
+      <button class="dbtn sec" type="button" id="aCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="aExcluir">Excluir acesso</button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== ORDEM DAS TAREFAS DO CLIENTE ========== -->
+<div class="drawer" id="ordemF" hidden>
+  <div class="dhd"><div><div class="dnome">Ordem das tarefas</div><div class="tmeta"><span class="criada" id="oEmp"></span><span class="criada">a lista do dia segue esta ordem, para todos</span></div></div><button id="oFechar" title="Fechar" type="button">×</button></div>
+  <div class="dsec"><ol class="olista" id="oLista"></ol></div>
+  <div class="dfoot" style="display:flex;gap:8px"><button class="dbtn" type="button" id="oSalvar">Salvar ordem</button><button class="dbtn sec" type="button" id="oCanc">Cancelar</button></div>
 </div>
 
 <!-- ========== TROCAR MINHA SENHA ========== -->

@@ -121,11 +121,13 @@ const novas = await val(`select public.central_gerar_tarefas('2026-10-07', '2026
 checar("geração do dia cria as de hoje", novas >= 3, `(criou ${novas})`);
 checar("geração é idempotente", (await val(`select public.central_gerar_tarefas('2026-10-07', '2026-11-30')`)) == 0);
 const quinz = (await db.query(`select string_agg(prazo::text, ',' order by prazo) as d from public.tarefas_operacionais where rotina_empresa_id = $1`, [r5.rotina_id])).rows[0].d;
-checar("quinzenal: 16/10, 02/11 (31/10 era sábado), 16/11, 30/11", quinz === "2026-10-16,2026-11-02,2026-11-16,2026-11-30", quinz);
+checar("quinzenal: 16/10, 30/10 (31/10 sábado → segunda 02/11 é Finados → sexta 30/10), 16/11, 30/11", quinz === "2026-10-16,2026-10-30,2026-11-16,2026-11-30", quinz);
 const mens = await um(`select prazo::text p, data_meta::text m from public.tarefas_operacionais where rotina_empresa_id = $1 order by prazo limit 1`, [r4.rotina_id]);
-checar("mensal: entrega 10/10 com meta 09/10", mens.p === "2026-10-10" && mens.m === "2026-10-09");
-const sem = await val(`select string_agg(distinct extract(isodow from prazo)::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [r3.rotina_id]);
+checar("mensal dia 10 (sábado) antecipa para sexta 09/10, meta 09/10", mens.p === "2026-10-09" && mens.m === "2026-10-09", JSON.stringify(mens));
+const sem = await val(`select string_agg(distinct extract(isodow from prazo)::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo <> '2026-11-19'`, [r3.rotina_id]);
 checar("semanal só às sextas", sem === "5");
+checar("semanal na sexta 20/11 (Consciência Negra) vai para quinta 19/11", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo = '2026-11-19'`, [r3.rotina_id])) == 1);
+checar("diária não nasce em feriado (02/11 e 20/11)", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo in ('2026-11-02', '2026-11-20')`, [r1.rotina_id])) == 0);
 checar("checklist padrão copiado para a tarefa", (await val(`select count(*) from public.central_tarefa_checklist c join public.tarefas_operacionais t on t.id = c.tarefa_id where t.rotina_empresa_id = $1 and t.prazo = '2026-10-07'`, [r1.rotina_id])) == 2);
 checar("dois responsáveis copiados", (await val(`select count(*) from public.central_tarefa_responsaveis r join public.tarefas_operacionais t on t.id = r.tarefa_id where t.rotina_empresa_id = $1 and t.prazo = '2026-10-09'`, [r3.rotina_id])) == 2);
 
@@ -150,9 +152,9 @@ const geradas = await val(`select public.central_gerar_tarefas('2026-10-01', '20
 checar("geração não quebra com as regras reais", geradas > 0, `(gerou ${geradas})`);
 const dias = async (r) => (await db.query(`select string_agg(to_char(prazo, 'DD/MM'), ',' order by prazo) d from public.tarefas_operacionais where rotina_empresa_id = $1 and prazo <= '2026-10-31'`, [r])).rows[0].d;
 checar('semanal "sexta" cai às sextas', (await dias(rqSexta)) === "02/10,09/10,16/10,23/10,30/10", await dias(rqSexta));
-checar('semanal "segunda-feira" cai às segundas', (await dias(rqSegunda)) === "05/10,12/10,19/10,26/10", await dias(rqSegunda));
-checar("mensal com dias [1, 15]", (await dias(rqDois)) === "01/10,15/10", await dias(rqDois));
-checar("anual em 27/02/2027", (await val(`select string_agg(prazo::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [rqAnual])) === "2027-02-27");
+checar('semanal "segunda-feira" cai às segundas (a de 02/11, Finados, vai para 30/10)', (await dias(rqSegunda)) === "05/10,12/10,19/10,26/10,30/10", await dias(rqSegunda));
+checar("mensal com dias [1, 15] (01/11 é domingo → 30/10)", (await dias(rqDois)) === "01/10,15/10,30/10", await dias(rqDois));
+checar("anual em 27/02/2027 (sábado) antecipa para 26/02", (await val(`select string_agg(prazo::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [rqAnual])) === "2027-02-26");
 checar("diária {dias: uteis} só seg a sex", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1 and extract(isodow from prazo) > 5`, [rqUteis])) == 0);
 checar("regra inválida não gera e não derruba as outras", (await val(`select count(*) from public.tarefas_operacionais where rotina_empresa_id = $1`, [rqRuim])) == 0 && true);
 await db.query(`update public.rotinas_empresa set situacao = 'pausada' where id = any($1::uuid[])`, [[rqSexta, rqSegunda, rqDois, rqAnual, rqUteis, rqRuim]]);
@@ -294,6 +296,12 @@ const rAnual = await val(`select public.central_salvar_rotina(null, $1, 'Entrega
 checar("Adm cadastra rotina anual", rAnual.status === "ok");
 const prazoAnual = await val(`select string_agg(prazo::text, ',') from public.tarefas_operacionais where rotina_empresa_id = $1`, [rAnual.rotina_id]);
 checar("anual gera em 30/11", prazoAnual === "2026-11-30", `${prazoAnual} · ${JSON.stringify(rAnual)}`);
+await como(P.Adm);
+await db.query(`select public.central_ordenar_rotinas($1, array[$2, $3]::uuid[])`, [E.Alfa, r2.rotina_id, r1.rotina_id]);
+checar("Adm reordena as tarefas do cliente", (await val(`select string_agg(rotina_id::text, ',' order by ordem) from public.central_vw_ordem where empresa_id = $1 and ordem is not null`, [E.Alfa])) === `${r2.rotina_id},${r1.rotina_id}`);
+await como(P.Ana);
+await erro("estagiária não reordena", `select public.central_ordenar_rotinas('${E.Alfa}', array['${r1.rotina_id}']::uuid[])`, "SEM_PERMISSAO");
+await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.Adm]);
 await erro("anual sem mês é recusada", `select public.central_salvar_rotina(null, '${E.Beta}', 'Outra anual', 'anual', '{"dia_mes":5}', '2026-10-01', null, true, array['${P.Carlos}']::uuid[], null)`, "MES_INVALIDO");
 
 console.log(`\n${ok} ok · ${falhas} falha(s)`);

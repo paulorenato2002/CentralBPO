@@ -152,7 +152,7 @@ function iniciarAgenda() {
 function prepararFiltros() {
   if (filtrosProntos) return; filtrosProntos = true;
   E.clientes.forEach((c) => $("#aEmp").insertAdjacentHTML("beforeend", `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`));
-  [...E.equipe.entries()].filter(([, x]) => x.ativo && x.papel !== "administrador")
+  [...E.equipe.entries()].filter(([, x]) => x.ativo)
     .forEach(([u, x]) => $("#aResp").insertAdjacentHTML("beforeend", `<option value="${u}">${esc(x.nome)}</option>`));
 }
 
@@ -171,8 +171,12 @@ export async function desenharAgenda() {
     $("#aTit").textContent = `${dmy(ini)} a ${dmy(fim)}`;
   }
   $("#aTit").classList.toggle("semana", modo === "semana");
-  const linhas = await todas(() => sb.from("central_vw_tarefas").select(SEL)
-    .or(`and(prazo.gte.${ini},prazo.lte.${fim}),and(data_meta.gte.${ini},data_meta.lte.${fim})`).order("id"));
+  const [linhas, feriados] = await Promise.all([
+    todas(() => sb.from("central_vw_tarefas").select(SEL)
+      .or(`and(prazo.gte.${ini},prazo.lte.${fim}),and(data_meta.gte.${ini},data_meta.lte.${fim})`).order("id")),
+    sb.from("central_feriados").select("dia, nome").gte("dia", ini).lte("dia", fim).then((r) => r.data || [])
+  ]);
+  const feriado = new Map(feriados.map((f) => [f.dia, f.nome]));
   if (meu !== pedidoAgenda) return;
   const fe = $("#aEmp").value, fr = $("#aResp").value;
   const ts = linhas.filter((t) => (!fe || t.empresa_id === fe) && (!fr || (t.responsaveis || []).includes(fr)) && (!aTipos.size || aTipos.has(t.tipo_recorrencia)));
@@ -188,7 +192,7 @@ export async function desenharAgenda() {
   for (let ds = ini; ds <= fim; ds = somaDias(ds, 1)) {
     const doDia = ts.filter((t) => t.prazo === ds || t.data_meta === ds);
     const di = doDia.filter((t) => t.tipo_recorrencia === "diaria"), out = doDia.filter((t) => t.tipo_recorrencia !== "diaria");
-    let c = "";
+    let c = feriado.has(ds) ? `<span class="ev feriado" title="Feriado: sem tarefas diárias; as outras foram para o dia útil anterior">Feriado · ${esc(feriado.get(ds))}</span>` : "";
     if (modo === "mes") {
       if (di.length) { const ok = di.filter(feita).length; c += `<span class="ev dia ${ok === di.length ? "ok" : ds < h ? "v" : ""}">${ok}/${di.length} diárias</span>`; }
       // a mesma tarefa em vários clientes vira uma linha só ("· 4 clientes")
@@ -209,7 +213,7 @@ export async function desenharAgenda() {
       });
     }
     const fora = modo === "mes" && ds.slice(0, 7) !== mesRef;
-    g += `<div class="c ${fora ? "fora" : ""} ${util(ds) ? "" : "fds"} ${ds === h ? "hoje" : ""}"><div class="n">${Number(ds.slice(8, 10))}</div>${c}</div>`;
+    g += `<div class="c ${fora ? "fora" : ""} ${util(ds) && !feriado.has(ds) ? "" : "fds"} ${ds === h ? "hoje" : ""}"><div class="n">${Number(ds.slice(8, 10))}</div>${c}</div>`;
   }
   $("#aGrid").innerHTML = g;
   $("#aGrid").classList.toggle("modo-semana", modo === "semana");
