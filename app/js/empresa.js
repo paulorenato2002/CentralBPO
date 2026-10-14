@@ -6,6 +6,7 @@ import { $, esc, hms, dmy, diaLongo, diaCurto, hhmm, somaDias, fimSemana, TIPO, 
 let app = null;                 // { ir(view, id) }
 let tarefas = [];               // linhas de central_vw_tarefas do cliente aberto
 let fMinhas = "", fTipos = new Set();
+let posicao = new Map();        // rotina_id → ordem definida pelo Adm (Ordenar tarefas)
 
 export function iniciar(a) {
   app = a;
@@ -34,7 +35,7 @@ export function iniciar(a) {
     await rpc("central_anotar", { p_empresa: E.aberta, p_texto: t });
     $("#nTxt").value = ""; toast("Anotação salva"); await carregarAnotacoes();
   });
-  iniciarCartao(); iniciarSenhas();
+  iniciarCartao(); iniciarSenhas(); iniciarOrdem();
   setInterval(tique, 1000);
   window.addEventListener("beforeunload", (ev) => { if (E.rodando) { ev.preventDefault(); ev.returnValue = ""; } });
 }
@@ -120,16 +121,22 @@ function confirmarFinalizar(depois) {
 export async function carregar() {
   const id = E.aberta, c = cliente(id);
   $("#eNome").textContent = c.nome; $("#eRazao").textContent = `${c.codigo} · ${c.razao}`;
-  const [linhas] = await Promise.all([
+  const [linhas, ordens] = await Promise.all([
     q(sb.from("central_vw_tarefas").select("*").eq("empresa_id", id).gte("alvo", somaDias(E.hoje, -90)).lte("alvo", fimSemana(E.hoje)).order("alvo").order("titulo")),
+    q(sb.from("central_vw_ordem").select("rotina_id, ordem").eq("empresa_id", id)),
     carregarAnotacoes()
   ]);
+  posicao = new Map(ordens.filter((o) => o.ordem != null).map((o) => [o.rotina_id, o.ordem]));
   tarefas = linhas;
+  $("#bOrdem").hidden = !pode("rotina");
   desenhar();
 }
 
 const passa = (t) => (!fMinhas || (t.responsaveis || []).includes(E.eu.id)) && (!fTipos.size || fTipos.has(t.tipo_recorrencia));
-const ordem = (a, b) => (a.status === "concluida") - (b.status === "concluida") || (b.responsaveis || []).includes(E.eu.id) - (a.responsaveis || []).includes(E.eu.id);
+// ordem definida pelo Adm; sem ordem: diárias primeiro, depois pelo nome. Concluída fica no lugar (riscada).
+const TIPO_ORD = { diaria: 1, semanal: 2, quinzenal: 3, mensal: 4, anual: 5, pontual: 6 };
+const pos = (t) => posicao.get(t.rotina_empresa_id) ?? 1e6;
+const ordem = (a, b) => pos(a) - pos(b) || (TIPO_ORD[a.tipo_recorrencia] || 9) - (TIPO_ORD[b.tipo_recorrencia] || 9) || a.titulo.localeCompare(b.titulo);
 const pp = (id, ok) => `<span class="pp ${COR_PAPEL[papelDe(id)] || ""}">${esc(nomeDe(id))}${ok ? " ✓" : ""}</span>`;
 
 function linha(t) {
@@ -252,7 +259,7 @@ export async function abrirCartao(id, msg) {
       : `<div class="dgrid">${campo("dMeta", "Data meta · pronto até", t.data_meta, "sem meta")}${campo("dEntrega", "Entrega prevista", t.prazo, "")}</div>`);
 
   const podeTransf = pode("transferir") && !feita;
-  const candidatos = [...E.equipe.entries()].filter(([u, x]) => x.ativo && x.papel !== "administrador" && !(t.responsaveis || []).includes(u));
+  const candidatos = [...E.equipe.entries()].filter(([u, x]) => x.ativo && !(t.responsaveis || []).includes(u));
   $("#dResp").innerHTML = (t.responsaveis || []).map((u) => `<div class="rsp">${pp(u)}${podeTransf ? `<select data-tr="${u}"><option value="">transferir para…</option>${candidatos.map(([cu, x]) => `<option value="${cu}">${esc(x.nome)}</option>`).join("")}</select>` : ""}</div>`).join("") +
     (feita ? `<div class="st" style="margin-top:4px;font-size:12px">Concluída por <b>${esc(nomeDe(t.concluida_por))}</b> às ${esc(hhmm(t.concluida_em))} em ${hms(t.duracao_segundos)}</div>` : "");
 
@@ -273,6 +280,34 @@ export async function abrirCartao(id, msg) {
   $("#dFoot").innerHTML = pe;
   if ($("#dConcluir")) $("#dConcluir").onclick = travar($("#dConcluir"), () => concluir(t));
   if ($("#dEntrar")) $("#dEntrar").onclick = () => { fecharCartao(); entrar(t.empresa_id).catch(avisoErro); };
+}
+
+/* ================= ordenar as tarefas do cliente ================= */
+let listaOrdem = [];
+function iniciarOrdem() {
+  $("#bOrdem").onclick = () => abrirOrdem().catch(avisoErro);
+  $("#oFechar").onclick = $("#oCanc").onclick = () => ($("#ordemF").hidden = true);
+  $("#oLista").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-mv]"); if (!b) return;
+    const i = Number(b.dataset.i), j = i + Number(b.dataset.mv);
+    if (j < 0 || j >= listaOrdem.length) return;
+    [listaOrdem[i], listaOrdem[j]] = [listaOrdem[j], listaOrdem[i]]; desenharOrdem();
+  });
+  $("#oSalvar").onclick = travar($("#oSalvar"), async () => {
+    await rpc("central_ordenar_rotinas", { p_empresa: E.aberta, p_rotinas: listaOrdem.map((r) => r.id) });
+    $("#ordemF").hidden = true; toast("Ordem das tarefas salva"); await carregar();
+  });
+}
+async function abrirOrdem() {
+  fecharCartao(); fecharSenhas();
+  const rs = await q(sb.from("central_vw_rotinas").select("id, nome, frequencia").eq("empresa_id", E.aberta).eq("situacao", "ativa"));
+  listaOrdem = rs.sort((a, b) => (posicao.get(a.id) ?? 1e6) - (posicao.get(b.id) ?? 1e6) || (TIPO_ORD[a.frequencia] || 9) - (TIPO_ORD[b.frequencia] || 9) || a.nome.localeCompare(b.nome));
+  $("#oEmp").textContent = cliente(E.aberta).nome;
+  desenharOrdem(); $("#ordemF").hidden = false;
+}
+function desenharOrdem() {
+  $("#oLista").innerHTML = listaOrdem.map((r, i) => `<li><span class="on">${i + 1}</span><span style="flex:1">${esc(r.nome)} <span class="tipo">${TIPO[r.frequencia] || ""}</span></span>
+    <button type="button" class="mb" data-mv="-1" data-i="${i}" ${i ? "" : "disabled"} title="Subir" aria-label="Subir ${esc(r.nome)}">↑</button><button type="button" class="mb" data-mv="1" data-i="${i}" ${i < listaOrdem.length - 1 ? "" : "disabled"} title="Descer" aria-label="Descer ${esc(r.nome)}">↓</button></li>`).join("") || '<li class="zero">Este cliente não tem rotinas ativas.</li>';
 }
 
 /* ================= senhas e acessos ================= */
