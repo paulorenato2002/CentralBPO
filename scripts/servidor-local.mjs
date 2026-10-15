@@ -29,11 +29,11 @@ createServer(async (req, res) => {
     if (!/^[a-z0-9/_-]+$/.test(rota) || rota.includes("..")) { res.writeHead(400); return res.end("rota inválida"); }
     const alvo = normalize(join(RAIZ, "api", rota + ".js"));
     if (!alvo.startsWith(join(RAIZ, "api"))) { res.writeHead(403); return res.end(); }
+    // O 404 é só quando a função não existe. Erro de dentro dela (uma dependência
+    // que falta, por exemplo) é 500 com a causa no console: 404 aqui esconderia o motivo.
+    try { await stat(alvo); } catch { res.writeHead(404); return res.end("função não encontrada"); }
     try { return (await import(pathToFileURL(alvo).href)).default(req, res); }
-    catch (e) {
-      if (e?.code === "ERR_MODULE_NOT_FOUND") { res.writeHead(404); return res.end("função não encontrada"); }
-      console.error(e); res.writeHead(500); return res.end();
-    }
+    catch (e) { console.error(`/api/${rota}:`, e); res.writeHead(500); return res.end(String(e.message || e)); }
   }
   if (caminho.endsWith("/")) caminho += "index.html";
   const arquivo = normalize(join(RAIZ, caminho));

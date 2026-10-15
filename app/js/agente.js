@@ -162,7 +162,14 @@ function ligar() {
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && !gaveta.hidden) fechar(); });
 
   conversaId = lembrada();
-  botao.hidden = false;                     // só agora o robô aparece: botão morto não entra na tela
+
+  // O robô só existe para quem está dentro: sem sessão, nem aparece.
+  const mostrar = (ligado) => {
+    botao.hidden = !ligado;
+    if (!ligado) { fechar(); conversaId = null; lembrar(null); const l = $("#agLista"); if (l) l.innerHTML = ""; }
+  };
+  sb.auth.getSession().then(({ data }) => mostrar(!!data?.session));
+  sb.auth.onAuthStateChange((_evento, sessao) => mostrar(!!sessao));
 }
 
 // A Central só desenha a barra depois do login, então espera o #bAgente existir.
