@@ -3,7 +3,7 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, resolve, normalize, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PORTA = Number(process.env.PORT) || 4173;
@@ -23,9 +23,17 @@ try {
 createServer(async (req, res) => {
   let caminho = decodeURIComponent(new URL(req.url, "http://x").pathname);
   if (caminho === "/") { res.writeHead(302, { Location: "/app/" }); return res.end(); }
-  if (caminho === "/api/admin") {   // mesma função que roda na Vercel
-    try { return (await import("../api/admin.js")).default(req, res); }
-    catch (e) { console.error(e); res.writeHead(500); return res.end(); }
+  if (caminho.startsWith("/api/")) {   // mesmas funções que rodam na Vercel
+    const rota = caminho.slice(5);
+    // Só nome de arquivo mesmo: letras, números, barra, hífen e sublinhado. Nada de "..".
+    if (!/^[a-z0-9/_-]+$/.test(rota) || rota.includes("..")) { res.writeHead(400); return res.end("rota inválida"); }
+    const alvo = normalize(join(RAIZ, "api", rota + ".js"));
+    if (!alvo.startsWith(join(RAIZ, "api"))) { res.writeHead(403); return res.end(); }
+    try { return (await import(pathToFileURL(alvo).href)).default(req, res); }
+    catch (e) {
+      if (e?.code === "ERR_MODULE_NOT_FOUND") { res.writeHead(404); return res.end("função não encontrada"); }
+      console.error(e); res.writeHead(500); return res.end();
+    }
   }
   if (caminho.endsWith("/")) caminho += "index.html";
   const arquivo = normalize(join(RAIZ, caminho));
