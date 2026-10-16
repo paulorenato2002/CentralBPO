@@ -10,6 +10,7 @@
 
 import { FERRAMENTAS_EMAIL, NOMES_EMAIL, executarEmail } from "./_ferramentas_email.js";
 import { FERRAMENTAS_RELATORIO, gerarRelatorioDia, marcarAnotacoesDoRelatorio } from "./_relatorio.js";
+import { FERRAMENTAS_ALTERACOES, alterarDados } from "./_alteracoes.js";
 
 const LIMITE_LINHAS = 200;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -146,7 +147,7 @@ export const FERRAMENTAS = [
   },
 ];
 
-FERRAMENTAS.push(...FERRAMENTAS_EMAIL, ...FERRAMENTAS_RELATORIO);
+FERRAMENTAS.push(...FERRAMENTAS_EMAIL, ...FERRAMENTAS_RELATORIO, ...FERRAMENTAS_ALTERACOES);
 
 const corta = (n) => Math.min(Math.max(Number(n) || 50, 1), LIMITE_LINHAS);
 
@@ -218,6 +219,7 @@ async function registrarAnotacao(args, sb, ctx) {
 // Cada ferramenta recebe: nome, argumentos, o cliente Supabase da pessoa e o contexto da conversa.
 async function despachar(nome, args, sb, ctx) {
   if (nome === "gerar_relatorio_dia") return gerarRelatorioDia(args, sb, ctx);
+  if (nome === "alterar_dados") return alterarDados(args, sb, ctx);
   if (nome === "enviar_email") {
     // Se o e-mail era um relatório, marca como enviadas as anotações que estavam na prévia.
     const r = await executarEmail(nome, args, ctx);
