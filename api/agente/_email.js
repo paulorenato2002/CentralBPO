@@ -4,8 +4,9 @@
 // escreveu na conversa depois da prévia: é trava do servidor, não do modelo,
 // porque um e-mail em nome da Effective não tem volta.
 //
-// Tudo que toca fora (banco e n8n) entra pelas "portas", para os testes
-// rodarem sem rede. Anexo ainda não existe aqui: entra junto com o upload.
+// Tudo que toca fora (banco, Storage e n8n) entra pelas "portas", para os testes
+// rodarem sem rede.
+import { MAX_ANEXOS_POR_MENSAGEM, mimeDe } from "./_anexos.js";
 
 const RE_CAMPO = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
 
@@ -68,9 +69,24 @@ export async function prepararEnvio(e, ctx, portas) {
     return { ok: false, erro: "Informe um modelo ou o assunto e o corpo do e-mail.", codigo: "sem_conteudo" };
   }
 
+  // Anexos: só os da própria pessoa e só os que não estão bloqueados. Um alheio recusa o lote inteiro.
+  const ids = [...new Set((e.anexoIds ?? []).map(String))];
+  if (ids.length > MAX_ANEXOS_POR_MENSAGEM) {
+    return { ok: false, erro: `Máximo de ${MAX_ANEXOS_POR_MENSAGEM} anexos por e-mail.`, codigo: "anexos_demais" };
+  }
+  const anexos = ids.length ? await portas.buscarAnexos(ids, ctx.usuarioId) : [];
+  if (anexos.length !== ids.length) {
+    return { ok: false, erro: "Algum anexo não existe ou não é seu. Nada foi preparado.", codigo: "anexo_alheio" };
+  }
+  const bloqueado = anexos.find((a) => a.bloqueado);
+  if (bloqueado) {
+    return { ok: false, erro: `${bloqueado.nome_original} está bloqueado e não pode sair por e-mail.`, codigo: "anexo_bloqueado" };
+  }
+
   const r = await portas.mensageiro({
     acao: "previa", assunto, corpo, dados: e.dados ?? {},
     para: unir(modelo?.para ?? [], e.para), cc: unir(modelo?.cc ?? [], e.cc), cco: unir(modelo?.cco ?? [], e.cco),
+    anexos: anexos.map((a) => ({ nome: a.nome_original, mime: mimeDe(a.extensao), tamanho: a.tamanho_bytes })),
   });
   if (!r.ok || !r.html || !r.texto || !r.assunto) {
     return { ok: false, erro: (r.erros ?? []).join(" ") || "O e-mail não foi montado.", codigo: "previa_recusada" };
@@ -86,9 +102,16 @@ export async function prepararEnvio(e, ctx, portas) {
     assunto: r.assunto,
     corpo_html: r.html,
     corpo_texto: r.texto,
-    anexos: [],
+    // Só metadados e o hash do que foi aprovado na prévia; o conteúdo é lido do Storage no envio.
+    anexos: anexos.map((a) => ({ anexo_id: a.id, nome: a.nome_original, tamanho: a.tamanho_bytes, hash: a.hash_sha256 })),
   });
-  return { ok: true, previa: { envioId: id, assunto: r.assunto, texto: r.texto, avisos: r.avisos ?? [], ...destinatarios } };
+  return {
+    ok: true,
+    previa: {
+      envioId: id, assunto: r.assunto, texto: r.texto, avisos: r.avisos ?? [], ...destinatarios,
+      anexos: anexos.map((a) => ({ nome: a.nome_original, tamanho: a.tamanho_bytes })),
+    },
+  };
 }
 
 // ------------------------------------------------------------------ envio
@@ -116,9 +139,29 @@ export async function enviarEnvio(envioId, ctx, portas) {
     return { ok: false, erro: "Este e-mail já está sendo enviado. Nada foi reenviado.", codigo: "envio_em_andamento" };
   }
 
+  // Os arquivos são lidos AGORA e conferidos contra o hash aprovado na prévia: o que sai é o que foi mostrado.
+  let anexos = [];
+  if (envio.anexos?.length) {
+    try {
+      const registros = await portas.buscarAnexos(envio.anexos.map((a) => a.anexo_id), ctx.usuarioId);
+      anexos = await Promise.all(
+        envio.anexos.map(async (a) => {
+          const reg = registros.find((r) => r.id === a.anexo_id);
+          if (!reg || reg.hash_sha256 !== a.hash) throw new Error(`${a.nome} mudou ou sumiu desde a prévia.`);
+          const conteudo = await portas.lerAnexo(reg);
+          return { nome: a.nome, mime: mimeDe(reg.extensao), base64: conteudo.toString("base64") };
+        })
+      );
+    } catch (err) {
+      const erro = err instanceof Error ? err.message : String(err);
+      await portas.concluir(envio.id, { status: "erro", erro });
+      return { ok: false, erro: `${erro} Nada foi enviado.`, codigo: "anexo_indisponivel" };
+    }
+  }
+
   const r = await portas.mensageiro({
     acao: "enviar", envio_id: envio.id, assunto: envio.assunto, html: envio.corpo_html, texto: envio.corpo_texto,
-    para: envio.para, cc: envio.cc, cco: envio.cco,
+    para: envio.para, cc: envio.cc, cco: envio.cco, anexos,
   });
   if (!r.ok || !r.mensagem_id) {
     const erro = (r.erros ?? []).join(" ") || "Falha no envio.";

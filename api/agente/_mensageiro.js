@@ -134,6 +134,34 @@ export function limparDestinatarios(para, cc, cco) {
   return { listas, erros, avisos };
 }
 
+const MAX_ANEXOS_BYTES = 10 * 1024 * 1024; // o n8n aceita 16 MB por chamada e o anexo viaja em base64 (+33%)
+const RE_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/** Na prévia só há nome e tamanho; no envio, o conteúdo em base64 é conferido. */
+export function conferirAnexos(anexos, comConteudo) {
+  const erros = [];
+  const saida = [];
+  let total = 0;
+  for (const a of anexos ?? []) {
+    const nome = String(a.nome ?? "").trim();
+    if (!nome) { erros.push("Anexo sem nome."); continue; }
+    let tamanho;
+    if (comConteudo) {
+      const b64 = String(a.base64 ?? "");
+      if (!b64 || b64.length % 4 !== 0 || !RE_BASE64.test(b64)) { erros.push(`${nome}: conteúdo ilegível.`); continue; }
+      tamanho = Buffer.from(b64, "base64").length;
+    } else {
+      tamanho = Number(a.tamanho) || 0;
+    }
+    total += tamanho;
+    saida.push({ nome, mime: a.mime || "application/octet-stream", tamanho, ...(comConteudo ? { base64: a.base64 } : {}) });
+  }
+  if (total > MAX_ANEXOS_BYTES) {
+    erros.push(`Anexos somam ${(total / 1024 / 1024).toFixed(1)} MB; o limite por envio é ${MAX_ANEXOS_BYTES / 1024 / 1024} MB. Divida em mais de um e-mail.`);
+  }
+  return { anexos: saida, erros };
+}
+
 /** POST no webhook do n8n. Devolve { ok, mensagem_id } ou { ok: false, erros, incerto? }. */
 export async function entregarAoN8n(pacote, { fetchImpl = fetch, env = {} } = {}) {
   const url = String(env.N8N_EMAIL_ENVIO_URL ?? "").trim();
@@ -195,10 +223,14 @@ export async function mensageiro(pedido, opcoes = {}) {
       : montar(assunto, String(pedido.corpo ?? ""), pedido.dados ?? {}, opcoes.env ?? {});
 
   const { listas, erros, avisos } = limparDestinatarios(pedido.para, pedido.cc, pedido.cco);
-  const todos = [...erros];
+  const { anexos, erros: errosAnexo } = conferirAnexos(pedido.anexos, enviar);
+  const todos = [...erros, ...errosAnexo];
   if (email.faltando.length) todos.push(`Faltam valores para: ${email.faltando.map((f) => `{{${f}}}`).join(", ")}.`);
 
-  const resposta = { ok: !todos.length, erros: todos, avisos, assunto: email.assunto, html: email.html, texto: email.texto, ...listas };
+  const resposta = {
+    ok: !todos.length, erros: todos, avisos, assunto: email.assunto, html: email.html, texto: email.texto, ...listas,
+    anexos: anexos.map(({ nome, mime, tamanho }) => ({ nome, mime, tamanho })),
+  };
   if (todos.length || !enviar) return resposta;
 
   const entrega = await entregarAoN8n(
@@ -211,7 +243,7 @@ export async function mensageiro(pedido, opcoes = {}) {
       assunto: email.assunto,
       html: email.html,
       texto: email.texto,
-      anexos: [],
+      anexos: anexos.map((a) => ({ nome: a.nome, mime: a.mime, base64: a.base64 })),
     },
     opcoes
   );

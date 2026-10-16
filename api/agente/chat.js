@@ -5,15 +5,16 @@
 // logado na Central, então a RLS vale igual para ele e para a pessoa. A chave de
 // serviço NÃO é usada aqui de propósito — se fosse, o agente veria o que a pessoa
 // não vê, e as views central_vw_* devolveriam vazio (elas dependem de auth.uid()).
-import { createClient } from "@supabase/supabase-js";
+// A única exceção são as portas do e-mail e dos anexos (tabelas fechadas para quem
+// está logado), que recebem o cliente de serviço depois do login validado.
 import { FERRAMENTAS, executar } from "./_ferramentas.js";
 import { criarPortasEmail } from "./_email_portas.js";
 import { hojeEmSaoPaulo } from "./_relatorio.js";
+import { autenticar, clienteDeServico } from "./_sessao.js";
+import { blocoDeAnexos, MAX_ANEXOS_POR_MENSAGEM, UUID } from "./_anexos.js";
+import { responder, lerCorpo } from "./_http.js";
 
-const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const CHAVE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const CHAVE_OPENAI = process.env.OPENAI_API_KEY;
-const CHAVE_SERVICO = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MODELO = process.env.OPENAI_MODEL || "gpt-5.5";
 
 const MAX_VOLTAS = 6;                          // teto de idas ao modelo por mensagem
@@ -44,12 +45,12 @@ O quadro de anotações de cada cliente guarda o que aconteceu de pontual no dia
 
 E-MAIL
 Os e-mails saem pela caixa da Effective, com o cabeçalho e a assinatura da casa.
-- Para enviar: chame preparar_email (ele NÃO envia). Mostre assunto, Para, Cc, Cco e o texto, e pergunte se pode enviar.
+- Para enviar: chame preparar_email (ele NÃO envia). Mostre assunto, Para, Cc, Cco, os anexos e o texto, e pergunte se pode enviar.
 - Só depois que a pessoa responder que sim, numa nova mensagem, chame enviar_email. O servidor recusa o envio se não houve essa resposta.
 - Se o modelo tem campos {{assim}}, pergunte à pessoa o valor dos que faltam. Nunca invente valor, nome nem endereço de e-mail: use só os que ela informou ou que estão no modelo.
 - Use listar_modelos_email para ver os modelos e salvar_modelo_email para guardar um novo.
 - Se o resultado for envio_incerto, diga que o e-mail pode ter saído e peça para conferir a caixa de enviados antes de tentar de novo.
-- Anexo ainda não está ligado: se pedirem, diga que entra na próxima entrega.
+- Anexos: quando a mensagem traz [Anexos desta mensagem], cada arquivo tem um anexo_id. Para mandar por e-mail, passe os anexo_ids em preparar_email e liste os arquivos na prévia. Nunca invente anexo_id. Você não lê o conteúdo dos arquivos: se pedirem para resumir ou conferir um anexo, diga que isso ainda não está ligado.
 
 RELATÓRIO DO DIA
 Reúne a posição das tarefas por cliente e as anotações que ainda não saíram, num e-mail para a equipe.
@@ -60,37 +61,8 @@ Reúne a posição das tarefas por cliente e as anotações que ainda não saír
 - Para teste, use somente_para com o e-mail que a pessoa indicar.
 
 O QUE VOCÊ NÃO FAZ AINDA
-Além da anotação do dia e do e-mail, não altera dados, não anexa arquivo e não arquiva documento — essas funções entram nas próximas entregas.
+Além da anotação do dia, do e-mail e do relatório, não altera outros dados e não arquiva documento na pasta do OneDrive — essas funções entram nas próximas entregas.
 Se pedirem, diga em uma linha que ainda não está ligado e o que dá para fazer no lugar.`;
-
-// Lê o "iss" do token sem validar nada: serve só para explicar o erro, nunca para liberar acesso.
-function emissorDiferente(token, urlServidor) {
-  try {
-    const carga = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
-    if (!carga.iss) return false;
-    return new URL(carga.iss).host !== new URL(urlServidor).host;
-  } catch {
-    return false;
-  }
-}
-
-function responder(res, status, corpo) {
-  res.statusCode = status;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
-  res.end(JSON.stringify(corpo));
-}
-
-async function lerCorpo(req) {
-  if (req.body && typeof req.body === "object") return req.body;
-  if (typeof req.body === "string") return JSON.parse(req.body || "{}");
-  let txt = "";
-  for await (const parte of req) {
-    txt += parte;
-    if (txt.length > 20000) throw new Error("corpo grande demais");
-  }
-  return JSON.parse(txt || "{}");
-}
 
 async function chamarModelo(mensagens) {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -107,8 +79,9 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return responder(res, 405, { erro: "método não suportado" });
   if (!CHAVE_OPENAI) return responder(res, 500, { erro: "OPENAI_API_KEY não configurada no servidor" });
 
-  const autorizacao = req.headers.authorization || "";
-  if (!autorizacao.startsWith("Bearer ")) return responder(res, 401, { erro: "sem sessão" });
+  const sessao = await autenticar(req);
+  if (sessao.erro) return responder(res, sessao.erro.status, { erro: sessao.erro.mensagem });
+  const { sb, usuarioId, perfil } = sessao;
 
   let corpo;
   try {
@@ -120,32 +93,30 @@ export default async function handler(req, res) {
   if (!texto) return responder(res, 400, { erro: "mensagem vazia" });
   if (texto.length > 4000) return responder(res, 400, { erro: "mensagem longa demais" });
 
-  // O mesmo token do navegador: a RLS trata o agente como trata a pessoa.
-  const sb = createClient(URL_SUPABASE, CHAVE_ANON, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: autorizacao } },
-  });
+  const papel = perfil?.papel ?? null;
+  // O cliente de SERVIÇO só entra nas portas do e-mail e dos anexos (tabelas fechadas para quem
+  // está logado). O resto do agente continua falando com o banco pelo token da pessoa.
+  const admin = clienteDeServico();
+  const emailPortas = admin ? criarPortasEmail({ sb, admin, usuarioId, papel }) : null;
 
-  const { data: auth, error: erroAuth } = await sb.auth.getUser();
-  if (erroAuth || !auth?.user) {
-    // Um token bom contra o Supabase errado também cai aqui, e o "sessão inválida"
-    // seco manda a pessoa relogar à toa. Então compara quem emitiu o token com o
-    // servidor que estamos usando e diz qual é o caso.
-    if (emissorDiferente(autorizacao.slice(7), URL_SUPABASE)) {
-      return responder(res, 500, {
-        erro: "o servidor está apontado para outro Supabase (confira NEXT_PUBLIC_SUPABASE_URL e reinicie)",
-      });
-    }
-    return responder(res, 401, { erro: "sessão inválida" });
+  // Anexos que vieram nesta mensagem: precisam existir e ser DESTA pessoa.
+  const idsAnexos = Array.isArray(corpo.anexos) ? [...new Set(corpo.anexos.map(String))] : [];
+  if (idsAnexos.length > MAX_ANEXOS_POR_MENSAGEM) {
+    return responder(res, 400, { erro: `Máximo de ${MAX_ANEXOS_POR_MENSAGEM} anexos por mensagem.` });
   }
-  const usuarioId = auth.user.id;
-
-  const { data: perfil } = await sb
-    .from("perfis_usuarios")
-    .select("nome, papel, ativo")
-    .eq("usuario_id", usuarioId)
-    .maybeSingle();
-  if (perfil && perfil.ativo === false) return responder(res, 403, { erro: "usuário inativo na Central" });
+  if (!idsAnexos.every((id) => UUID.test(id))) return responder(res, 400, { erro: "anexo inválido" });
+  let registrosAnexos = [];
+  if (idsAnexos.length) {
+    if (!emailPortas) return responder(res, 500, { erro: "Anexos indisponíveis: falta a chave de serviço do Supabase no servidor." });
+    try {
+      registrosAnexos = await emailPortas.buscarAnexos(idsAnexos, usuarioId);
+    } catch (e) {
+      return responder(res, 500, { erro: String(e.message || e).slice(0, 300) });
+    }
+    if (registrosAnexos.length !== idsAnexos.length) return responder(res, 400, { erro: "Algum anexo não existe ou não é seu." });
+  }
+  // O que o modelo lê e o que fica na memória da conversa: o texto mais a lista de anexos com os ids.
+  const textoModelo = registrosAnexos.length ? `${texto}\n\n${blocoDeAnexos(registrosAnexos)}` : texto;
 
   const hoje = hojeEmSaoPaulo(); // o dia de Brasília: toISOString() viraria o dia seguinte depois das 21h
 
@@ -180,12 +151,6 @@ export default async function handler(req, res) {
     const ultimaDoAgente = (anteriores ?? []).find((m) => m.papel === "agente");
     const pendenteVale =
       ultimaDoAgente && Date.now() - new Date(ultimaDoAgente.created_at).getTime() < VALIDADE_PENDENTE_MS;
-    // O cliente de SERVIÇO só entra nas portas do e-mail (tabelas fechadas para quem está logado).
-    // O resto do agente continua falando com o banco pelo token da pessoa.
-    const admin = CHAVE_SERVICO
-      ? createClient(URL_SUPABASE, CHAVE_SERVICO, { auth: { persistSession: false, autoRefreshToken: false } })
-      : null;
-    const papel = perfil?.papel ?? null;
     const ctx = {
       hoje,
       usuarioId,
@@ -194,7 +159,7 @@ export default async function handler(req, res) {
       nome: perfil?.nome ?? null,
       pendente: pendenteVale ? ultimaDoAgente.metadados?.pendente ?? null : null,
       novoPendente: null,
-      emailPortas: admin ? criarPortasEmail({ sb, admin, usuarioId, papel }) : null,
+      emailPortas,
     };
 
     const historico = [...(anteriores ?? [])]
@@ -203,13 +168,13 @@ export default async function handler(req, res) {
       .map((m) => ({ role: m.papel === "usuario" ? "user" : "assistant", content: m.conteudo }));
 
     // 3. a pergunta é gravada antes de chamar o modelo: falha do modelo não apaga o que a pessoa escreveu
-    await sb.from("mensagens_agente").insert({ conversa_id: conversaId, papel: "usuario", conteudo: texto });
+    await sb.from("mensagens_agente").insert({ conversa_id: conversaId, papel: "usuario", conteudo: textoModelo });
 
     const quem = perfil ? `Quem está falando: ${perfil.nome}, papel ${perfil.papel}.` : "";
     const mensagens = [
       { role: "system", content: `${INSTRUCOES}\n\nHoje é ${hoje}. ${quem}` },
       ...historico,
-      { role: "user", content: texto },
+      { role: "user", content: textoModelo },
     ];
 
     // 4. o laço: o modelo pede ferramenta, a gente executa, ele responde

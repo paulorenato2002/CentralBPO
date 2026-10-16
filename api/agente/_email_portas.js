@@ -8,6 +8,7 @@
 //
 // "sb" é o cliente da pessoa (lê a própria conversa); "admin", o de serviço.
 import { mensageiro } from "./_mensageiro.js";
+import { BUCKET, caminhoDoAnexo, hashSha256 } from "./_anexos.js";
 
 const PAPEIS_QUE_EDITAM_MODELO = ["administrador", "supervisor", "socio"];
 
@@ -99,6 +100,28 @@ export function criarPortasEmail({ sb, admin, usuarioId, papel, opcoesMensageiro
           ? { status: "enviado", provedor_mensagem_id: d.mensagemId ?? null, enviado_em: new Date().toISOString() }
           : { status: "erro", erro_mensagem: String(d.erro ?? "").slice(0, 500) };
       await admin.from("envios_email").update(linha).eq("id", id).eq("solicitante_id", usuarioId);
+    },
+
+    // Só os anexos do próprio usuário: pedir o de outra pessoa devolve uma lista menor, e o chamador recusa o lote.
+    async buscarAnexos(ids, uid) {
+      if (!ids.length) return [];
+      const { data, error } = await admin
+        .from("anexos_agente")
+        .select("id, arquivo_id, usuario_id, nome_original, extensao, tamanho_bytes, hash_sha256, bloqueado, motivo_bloqueio")
+        .in("id", ids)
+        .eq("usuario_id", uid);
+      if (error) throw new Error(`não consegui ler os anexos: ${error.message}`);
+      return data ?? [];
+    },
+
+    // O conteúdo vem do Storage na hora do envio e é conferido contra o hash registrado no upload.
+    async lerAnexo(anexo) {
+      const caminho = caminhoDoAnexo(anexo.usuario_id, anexo.arquivo_id, anexo.nome_original);
+      const { data, error } = await admin.storage.from(BUCKET).download(caminho);
+      if (error || !data) throw new Error(`${anexo.nome_original} não está mais disponível no armazenamento.`);
+      const buffer = Buffer.from(await data.arrayBuffer());
+      if (hashSha256(buffer) !== anexo.hash_sha256) throw new Error(`${anexo.nome_original} mudou no armazenamento desde o upload.`);
+      return buffer;
     },
 
     mensageiro: (pedido) => mensageiro(pedido, opcoesMensageiro),

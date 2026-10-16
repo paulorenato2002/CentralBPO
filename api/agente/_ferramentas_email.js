@@ -58,6 +58,7 @@ export const FERRAMENTAS_EMAIL = [
           cc: listaDeEnderecos,
           cco: listaDeEnderecos,
           empresa_id: { type: "string" },
+          anexo_ids: { type: "array", items: { type: "string" }, description: "anexo_id dos arquivos anexados na conversa (até 10, 10 MB no total)" },
         },
         additionalProperties: false,
       },
@@ -106,7 +107,7 @@ export async function executarEmail(nome, args, ctx) {
       {
         modeloCodigo: args.modelo_codigo ?? null, assunto: args.assunto ?? null, corpo: args.corpo ?? null,
         dados: args.dados && typeof args.dados === "object" ? args.dados : {},
-        para: lista(args.para), cc: lista(args.cc), cco: lista(args.cco), empresaId,
+        para: lista(args.para), cc: lista(args.cc), cco: lista(args.cco), empresaId, anexoIds: lista(args.anexo_ids),
       },
       { usuarioId: ctx.usuarioId, conversaId: ctx.conversaId },
       portas
@@ -115,7 +116,7 @@ export async function executarEmail(nome, args, ctx) {
     const p = r.previa;
     return {
       precisa_confirmar: true,
-      previa: { envio_id: p.envioId, assunto: p.assunto, para: p.para, cc: p.cc, cco: p.cco, texto: p.texto, avisos: p.avisos },
+      previa: { envio_id: p.envioId, assunto: p.assunto, para: p.para, cc: p.cc, cco: p.cco, texto: p.texto, avisos: p.avisos, anexos: p.anexos },
       instrucao:
         "Mostre assunto, destinatários (Para, Cc e Cco) e o texto, e pergunte se pode enviar. Só chame enviar_email depois que a pessoa responder que sim numa nova mensagem.",
     };
