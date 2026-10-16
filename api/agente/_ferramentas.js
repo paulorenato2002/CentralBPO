@@ -8,6 +8,8 @@
 // prévia e gravar na mesma resposta: a prévia fica guardada na mensagem do
 // agente (ctx.pendente) e só vale se a pessoa escreveu depois dela.
 
+import { FERRAMENTAS_EMAIL, NOMES_EMAIL, executarEmail } from "./_ferramentas_email.js";
+
 const LIMITE_LINHAS = 200;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -143,6 +145,8 @@ export const FERRAMENTAS = [
   },
 ];
 
+FERRAMENTAS.push(...FERRAMENTAS_EMAIL);
+
 const corta = (n) => Math.min(Math.max(Number(n) || 50, 1), LIMITE_LINHAS);
 
 // id → { nome, ativo }. Tenta a view da equipe; se ela ainda não existir, usa perfis_usuarios.
@@ -211,7 +215,9 @@ async function registrarAnotacao(args, sb, ctx) {
 }
 
 // Cada ferramenta recebe: nome, argumentos, o cliente Supabase da pessoa e o contexto da conversa.
-export async function executar(nome, args, sb, ctx) {
+async function despachar(nome, args, sb, ctx) {
+  if (NOMES_EMAIL.has(nome)) return executarEmail(nome, args, ctx);
+
   if (nome === "listar_clientes") {
     const { data, error } = await sb.from("central_clientes").select("id, codigo, nome, situacao").order("codigo");
     return error ? { erro: error.message } : { clientes: data };
@@ -282,4 +288,14 @@ export async function executar(nome, args, sb, ctx) {
   }
 
   return { erro: `ferramenta desconhecida: ${nome}` };
+}
+
+// Exceção dentro de uma ferramenta vira resposta de erro para o modelo: não derruba a conversa inteira.
+export async function executar(nome, args, sb, ctx) {
+  try {
+    return await despachar(nome, args, sb, ctx);
+  } catch (e) {
+    console.error(`ferramenta ${nome}:`, e);
+    return { erro: `Falha ao executar ${nome}: ${String(e?.message ?? e).slice(0, 200)}` };
+  }
 }

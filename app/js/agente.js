@@ -86,7 +86,7 @@ function abertura() {
   const nome = (E.eu?.nome || "").split(" ")[0];
   escrever(
     "agente",
-    `Oi${nome ? ", " + nome : ""}. Posso consultar tarefas, prazos, rotinas e anotações dos seus clientes, e registrar a anotação do dia.\n\nExperimente: **o que está atrasado hoje?** ou **anota na L2H que o boleto do aluguel ainda não chegou**`
+    `Oi${nome ? ", " + nome : ""}. Posso consultar tarefas, prazos, rotinas e anotações dos seus clientes, registrar a anotação do dia e preparar e-mails da Effective.\n\nExperimente: **o que está atrasado hoje?** ou **anota na L2H que o boleto do aluguel ainda não chegou**`
   );
 }
 

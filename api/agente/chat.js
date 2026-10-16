@@ -7,10 +7,12 @@
 // não vê, e as views central_vw_* devolveriam vazio (elas dependem de auth.uid()).
 import { createClient } from "@supabase/supabase-js";
 import { FERRAMENTAS, executar } from "./_ferramentas.js";
+import { criarPortasEmail } from "./_email_portas.js";
 
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CHAVE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const CHAVE_OPENAI = process.env.OPENAI_API_KEY;
+const CHAVE_SERVICO = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MODELO = process.env.OPENAI_MODEL || "gpt-5.5";
 
 const MAX_VOLTAS = 6;                          // teto de idas ao modelo por mensagem
@@ -39,8 +41,17 @@ O quadro de anotações de cada cliente guarda o que aconteceu de pontual no dia
 - Se não souber de qual cliente é, pergunte. Use listar_clientes para achar o id.
 - Marque como verificada (verificar_anotacao) só quando a pessoa pedir.
 
+E-MAIL
+Os e-mails saem pela caixa da Effective, com o cabeçalho e a assinatura da casa.
+- Para enviar: chame preparar_email (ele NÃO envia). Mostre assunto, Para, Cc, Cco e o texto, e pergunte se pode enviar.
+- Só depois que a pessoa responder que sim, numa nova mensagem, chame enviar_email. O servidor recusa o envio se não houve essa resposta.
+- Se o modelo tem campos {{assim}}, pergunte à pessoa o valor dos que faltam. Nunca invente valor, nome nem endereço de e-mail: use só os que ela informou ou que estão no modelo.
+- Use listar_modelos_email para ver os modelos e salvar_modelo_email para guardar um novo.
+- Se o resultado for envio_incerto, diga que o e-mail pode ter saído e peça para conferir a caixa de enviados antes de tentar de novo.
+- Anexo ainda não está ligado: se pedirem, diga que entra na próxima entrega.
+
 O QUE VOCÊ NÃO FAZ AINDA
-Além da anotação do dia, não altera dados, não envia e-mail e não arquiva documento — essas funções entram nas próximas entregas.
+Além da anotação do dia e do e-mail, não altera dados, não anexa arquivo e não arquiva documento — essas funções entram nas próximas entregas.
 Se pedirem, diga em uma linha que ainda não está ligado e o que dá para fazer no lugar.`;
 
 // Lê o "iss" do token sem validar nada: serve só para explicar o erro, nunca para liberar acesso.
@@ -160,7 +171,21 @@ export default async function handler(req, res) {
     const ultimaDoAgente = (anteriores ?? []).find((m) => m.papel === "agente");
     const pendenteVale =
       ultimaDoAgente && Date.now() - new Date(ultimaDoAgente.created_at).getTime() < VALIDADE_PENDENTE_MS;
-    const ctx = { hoje, pendente: pendenteVale ? ultimaDoAgente.metadados?.pendente ?? null : null, novoPendente: null };
+    // O cliente de SERVIÇO só entra nas portas do e-mail (tabelas fechadas para quem está logado).
+    // O resto do agente continua falando com o banco pelo token da pessoa.
+    const admin = CHAVE_SERVICO
+      ? createClient(URL_SUPABASE, CHAVE_SERVICO, { auth: { persistSession: false, autoRefreshToken: false } })
+      : null;
+    const papel = perfil?.papel ?? null;
+    const ctx = {
+      hoje,
+      usuarioId,
+      conversaId,
+      papel,
+      pendente: pendenteVale ? ultimaDoAgente.metadados?.pendente ?? null : null,
+      novoPendente: null,
+      emailPortas: admin ? criarPortasEmail({ sb, admin, usuarioId, papel }) : null,
+    };
 
     const historico = [...(anteriores ?? [])]
       .reverse()
