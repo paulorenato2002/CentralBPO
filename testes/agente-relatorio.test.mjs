@@ -118,10 +118,8 @@ test("gerar: somente_para troca a equipe pelos endereços de teste", async () =>
   assert.deepEqual(r.previa.para, ["paulo@x.com"]);
 });
 
-test("gerar: estagiária, dia inválido, resumo com erro ou vazio não geram rascunho", async () => {
+test("gerar: dia inválido, resumo com erro ou vazio não geram rascunho", async () => {
   const portas = fakePortas();
-  const bloqueada = await executar("gerar_relatorio_dia", {}, fakeSb(), ctxDe(portas, { papel: "estagiaria" }));
-  assert.match(bloqueada.erro, /analista, supervisor ou administrador/);
   assert.match((await executar("gerar_relatorio_dia", { dia: "ontem" }, fakeSb(), ctxDe(portas))).erro, /Dia inválido/);
   assert.match((await executar("gerar_relatorio_dia", {}, fakeSb({ erroResumo: { message: "função não existe" } }), ctxDe(portas))).erro, /resumo do dia/);
   assert.match((await executar("gerar_relatorio_dia", {}, fakeSb({ resumo: [] }), ctxDe(portas))).erro, /Não há clientes/);
@@ -176,4 +174,9 @@ test("marcar: ignora e-mail comum, avisa se o banco recusar e não marca prévia
 test("hoje é o dia de Brasília, não o de Greenwich", () => {
   assert.equal(hojeEmSaoPaulo(new Date("2026-10-17T01:30:00Z")), "2026-10-16");
   assert.equal(hojeEmSaoPaulo(new Date("2026-10-16T15:00:00Z")), "2026-10-16");
+});
+
+test("a estagiária também gera o relatório", async () => {
+  const r = await executar("gerar_relatorio_dia", {}, fakeSb(), ctxDe(fakePortas(), { papel: "estagiaria" }));
+  assert.equal(r.precisa_confirmar, true);
 });

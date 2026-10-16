@@ -149,7 +149,6 @@ export const FERRAMENTAS_RELATORIO = [
 ];
 
 export async function gerarRelatorioDia(args, sb, ctx) {
-  if (ctx.papel === "estagiaria") return { erro: "O relatório do dia é gerado por analista, supervisor ou administrador." };
   if (!ctx.emailPortas) return { erro: "O e-mail não está disponível neste servidor (falta a chave de serviço do Supabase)." };
 
   const dia = args.dia ?? ctx.hoje;
