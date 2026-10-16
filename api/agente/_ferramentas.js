@@ -9,6 +9,7 @@
 // agente (ctx.pendente) e só vale se a pessoa escreveu depois dela.
 
 import { FERRAMENTAS_EMAIL, NOMES_EMAIL, executarEmail } from "./_ferramentas_email.js";
+import { FERRAMENTAS_RELATORIO, gerarRelatorioDia, marcarAnotacoesDoRelatorio } from "./_relatorio.js";
 
 const LIMITE_LINHAS = 200;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -145,7 +146,7 @@ export const FERRAMENTAS = [
   },
 ];
 
-FERRAMENTAS.push(...FERRAMENTAS_EMAIL);
+FERRAMENTAS.push(...FERRAMENTAS_EMAIL, ...FERRAMENTAS_RELATORIO);
 
 const corta = (n) => Math.min(Math.max(Number(n) || 50, 1), LIMITE_LINHAS);
 
@@ -216,6 +217,12 @@ async function registrarAnotacao(args, sb, ctx) {
 
 // Cada ferramenta recebe: nome, argumentos, o cliente Supabase da pessoa e o contexto da conversa.
 async function despachar(nome, args, sb, ctx) {
+  if (nome === "gerar_relatorio_dia") return gerarRelatorioDia(args, sb, ctx);
+  if (nome === "enviar_email") {
+    // Se o e-mail era um relatório, marca como enviadas as anotações que estavam na prévia.
+    const r = await executarEmail(nome, args, ctx);
+    return r.ok ? { ...r, ...(await marcarAnotacoesDoRelatorio(String(args.envio_id ?? ""), sb, ctx)) } : r;
+  }
   if (NOMES_EMAIL.has(nome)) return executarEmail(nome, args, ctx);
 
   if (nome === "listar_clientes") {

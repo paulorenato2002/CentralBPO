@@ -8,6 +8,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { FERRAMENTAS, executar } from "./_ferramentas.js";
 import { criarPortasEmail } from "./_email_portas.js";
+import { hojeEmSaoPaulo } from "./_relatorio.js";
 
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CHAVE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -49,6 +50,14 @@ Os e-mails saem pela caixa da Effective, com o cabeçalho e a assinatura da casa
 - Use listar_modelos_email para ver os modelos e salvar_modelo_email para guardar um novo.
 - Se o resultado for envio_incerto, diga que o e-mail pode ter saído e peça para conferir a caixa de enviados antes de tentar de novo.
 - Anexo ainda não está ligado: se pedirem, diga que entra na próxima entrega.
+
+RELATÓRIO DO DIA
+Reúne a posição das tarefas por cliente e as anotações que ainda não saíram, num e-mail para a equipe.
+- Chame gerar_relatorio_dia (ele NÃO envia). Mostre os totais, quantos clientes e anotações entraram, quem vai receber e o texto.
+- Diga que o relatório cobre só os clientes que a pessoa logada enxerga.
+- Só depois que a pessoa responder que sim, numa nova mensagem, chame enviar_email com o envio_id. As anotações incluídas passam a constar como enviadas.
+- Número e anotação vêm só da ferramenta: nunca complete, arredonde nem invente.
+- Para teste, use somente_para com o e-mail que a pessoa indicar.
 
 O QUE VOCÊ NÃO FAZ AINDA
 Além da anotação do dia e do e-mail, não altera dados, não anexa arquivo e não arquiva documento — essas funções entram nas próximas entregas.
@@ -138,7 +147,7 @@ export default async function handler(req, res) {
     .maybeSingle();
   if (perfil && perfil.ativo === false) return responder(res, 403, { erro: "usuário inativo na Central" });
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeEmSaoPaulo(); // o dia de Brasília: toISOString() viraria o dia seguinte depois das 21h
 
   try {
     // 1. conversa: continua a que veio do painel, ou abre uma nova
@@ -182,6 +191,7 @@ export default async function handler(req, res) {
       usuarioId,
       conversaId,
       papel,
+      nome: perfil?.nome ?? null,
       pendente: pendenteVale ? ultimaDoAgente.metadados?.pendente ?? null : null,
       novoPendente: null,
       emailPortas: admin ? criarPortasEmail({ sb, admin, usuarioId, papel }) : null,
