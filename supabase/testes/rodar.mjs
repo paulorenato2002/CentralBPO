@@ -304,5 +304,39 @@ await erro("estagiária não reordena", `select public.central_ordenar_rotinas('
 await db.exec(`reset role`); await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.Adm]);
 await erro("anual sem mês é recusada", `select public.central_salvar_rotina(null, '${E.Beta}', 'Outra anual', 'anual', '{"dia_mes":5}', '2026-10-01', null, true, array['${P.Carlos}']::uuid[], null)`, "MES_INVALIDO");
 
+// ---------- 9. biblioteca do agente ----------
+console.log("\n9. Biblioteca do agente (agente_biblioteca)");
+await db.exec(`reset role`);
+const semAcessoId = await val(`insert into auth.users (email) values ('sem-acesso@exemplo.com') returning id`);
+await db.query(`insert into public.perfis_usuarios (usuario_id, nome, email, papel) values ($1, 'Sem Acesso', 'sem-acesso@exemplo.com', 'estagiaria')`, [semAcessoId]);
+// (tem login e perfil, mas não está em central_colaboradores: não é da Central)
+
+await como(P.Ana); await db.exec(`set role authenticated`);
+const autorCriado = await val(`insert into public.agente_biblioteca (codigo, tipo, nome, conteudo, autor_id) values ('PROMPT_DRE', 'prompt', 'Revisão de DRE', 'Revise a DRE do mês.', '${P.Adm}') returning autor_id`);
+checar("colaboradora cria item e o autor é ELA, mesmo pedindo outro", autorCriado === P.Ana);
+checar("colaborador ativo lê a biblioteca", (await val(`select count(*) from public.agente_biblioteca`)) == 1);
+await erro("link só aceita endereço http(s)", `insert into public.agente_biblioteca (codigo, tipo, nome, conteudo) values ('LINK_RUIM', 'link', 'x', 'javascript:alert(1)')`, "agente_biblioteca_link_check");
+await erro("código em minúscula é recusado", `insert into public.agente_biblioteca (codigo, tipo, nome, conteudo) values ('minusculo', 'prompt', 'x', 'y')`, "agente_biblioteca_codigo_check");
+await erro("tipo inventado é recusado", `insert into public.agente_biblioteca (codigo, tipo, nome, conteudo) values ('TIPO_RUIM', 'video', 'x', 'y')`, "agente_biblioteca_tipo_check");
+await erro("nem o autor apaga", `delete from public.agente_biblioteca where codigo = 'PROMPT_DRE'`, "permission denied");
+const meu = await db.query(`update public.agente_biblioteca set nome = 'Revisão de DRE v2', autor_id = '${P.Adm}', codigo = 'OUTRO_CODIGO' where codigo = 'PROMPT_DRE' returning autor_id, codigo, nome`);
+checar("o autor atualiza, mas não troca autor nem código", meu.rows.length === 1 && meu.rows[0].autor_id === P.Ana && meu.rows[0].codigo === "PROMPT_DRE" && meu.rows[0].nome === "Revisão de DRE v2");
+
+await db.exec(`reset role`); await como(P.Bruna); await db.exec(`set role authenticated`);
+const alheio = await db.query(`update public.agente_biblioteca set nome = 'invadido' where codigo = 'PROMPT_DRE' returning id`);
+checar("outra colaboradora NÃO altera item de outra pessoa", alheio.rows.length === 0);
+
+await db.exec(`reset role`); await como(P.Paulo); await db.exec(`set role authenticated`);
+const doSupervisor = await db.query(`update public.agente_biblioteca set descricao = 'revisado pelo supervisor' where codigo = 'PROMPT_DRE' returning id`);
+checar("supervisor altera item de outra pessoa", doSupervisor.rows.length === 1);
+
+await db.exec(`reset role`); await como(semAcessoId); await db.exec(`set role authenticated`);
+checar("quem não é da Central não lê", (await val(`select count(*) from public.agente_biblioteca`)) == 0);
+await erro("quem não é da Central não cria", `insert into public.agente_biblioteca (codigo, tipo, nome, conteudo) values ('INVASOR', 'prompt', 'x', 'y')`, "row-level security");
+
+await db.exec(`reset role`); await db.exec(`set role anon`);
+await erro("sem login não enxerga a tabela", `select * from public.agente_biblioteca`, "permission denied");
+await db.exec(`reset role`); await como(P.Adm);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

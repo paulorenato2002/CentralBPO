@@ -47,7 +47,7 @@ async function previa(sb, operacao, dados) {
 }
 
 test("a ferramenta oferece só estas operações, e nenhuma apaga ou mexe em cadastro", () => {
-  assert.deepEqual(NOMES_OPERACOES, ["criar_tarefa_pontual", "alterar_datas_tarefa", "comentar_tarefa", "transferir_tarefa"]);
+  assert.deepEqual(NOMES_OPERACOES, ["criar_tarefa_pontual", "alterar_datas_tarefa", "comentar_tarefa", "transferir_tarefa", "salvar_biblioteca"]);
   assert.equal(FERRAMENTAS_ALTERACOES.length, 1);
   assert.ok(FERRAMENTAS.some((f) => f.function.name === "alterar_dados"), "entra na lista do modelo");
   assert.ok(!FERRAMENTAS.some((f) => /apagar|deletar|excluir|delete/i.test(f.function.name)), "nenhuma ferramenta apaga");

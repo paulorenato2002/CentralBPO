@@ -8,7 +8,8 @@
 // TODA alteração tem duas etapas. A prévia mostra o que vai mudar e guarda os dados
 // NORMALIZADOS; a confirmação, que só vale na mensagem seguinte da pessoa, grava
 // exatamente a prévia e ignora o que o modelo mandar de novo. Vale uma vez só.
-import { UUID } from "./_anexos.js";
+import { UUID, bloqueadoPorConteudo } from "./_anexos.js";
+import { bibliotecaIndisponivel } from "./_biblioteca.js";
 
 const DIA_ISO = /^\d{4}-\d{2}-\d{2}$/;
 const dataValida = (s) => {
@@ -31,12 +32,14 @@ const ERROS = {
   PRAZO_OBRIGATORIO: "Informe a data de entrega.",
   META_DEPOIS_DA_ENTREGA: "A meta não pode ser depois da entrega.",
   DADOS_INCOMPLETOS: "Preencha os campos obrigatórios.",
+  "row-level security": "Você não tem permissão para isso.",
   // Por último de propósito: "SEM_ACESSO" é prefixo de "SEM_ACESSO_CLIENTE", e a primeira que casa vence.
   SEM_ACESSO: "Seu usuário não tem acesso ativo à Central. Fale com o administrador.",
 };
 
 export function traduzirErroDoBanco(msg = "") {
   const t = String(msg);
+  if (bibliotecaIndisponivel(t)) return "A biblioteca ainda não está disponível: falta aplicar a migration no banco.";
   for (const [codigo, traducao] of Object.entries(ERROS)) if (t.includes(codigo)) return traducao;
   return t.slice(0, 200) || "o banco recusou a alteração";
 }
@@ -153,6 +156,60 @@ const OPERACOES = {
     },
     executar: (d, sb) => sb.rpc("central_transferir", { p_tarefa: d.tarefa_id, p_de: d.de, p_para: d.para }),
   },
+
+  // Guarda (ou atualiza) um prompt, comando ou link da biblioteca da equipe. A tabela é aberta pela RLS
+  // ao autor e a supervisor/administrador; aqui a checagem existe para a mensagem sair clara.
+  salvar_biblioteca: {
+    async preparar(d, sb, ctx) {
+      const codigo = texto(d.codigo).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
+      if (codigo.length < 3) return { erro: "Código muito curto (mínimo 3 letras ou números)." };
+      const tipo = texto(d.tipo);
+      if (!["prompt", "comando", "link"].includes(tipo)) return { erro: "O tipo precisa ser prompt, comando ou link." };
+      const nome = texto(d.nome);
+      if (!nome || nome.length > 120) return { erro: "Dê um nome de até 120 caracteres." };
+      const conteudo = texto(d.conteudo);
+      if (!conteudo) return { erro: "O conteúdo está vazio." };
+      if (conteudo.length > 8000) return { erro: "O conteúdo passa de 8000 caracteres." };
+      if (tipo === "link" && !/^https?:\/\/\S+$/.test(conteudo)) {
+        return { erro: "Para o tipo link, o conteúdo precisa ser um endereço que comece com http:// ou https://." };
+      }
+      const descricao = texto(d.descricao) || null;
+      // A biblioteca é lida por toda a equipe e entra no contexto do agente: credencial não entra.
+      if (bloqueadoPorConteudo(`${conteudo}\n${descricao ?? ""}`).bloqueado) {
+        return { erro: "O conteúdo parece ter uma credencial (senha, token ou chave). Não guarde isso na biblioteca." };
+      }
+      const rotina = texto(d.rotina) || null;
+      const tags = [...new Set((Array.isArray(d.tags) ? d.tags : []).map((t) => texto(t).toLowerCase()).filter(Boolean))].slice(0, 10);
+
+      const { data: atual, error } = await sb.from("agente_biblioteca").select("id, autor_id").eq("codigo", codigo).maybeSingle();
+      if (error) return { erro: traduzirErroDoBanco(error.message) };
+      if (atual && atual.autor_id !== ctx.usuarioId && !["administrador", "supervisor"].includes(ctx.papel)) {
+        return { erro: `O item ${codigo} foi criado por outra pessoa. Use outro código ou peça ao supervisor para alterar.` };
+      }
+      return {
+        dados: { codigo, tipo, nome, conteudo, descricao, rotina, tags, existente_id: atual?.id ?? null },
+        resumo: `${atual ? "Atualizar" : "Salvar"} na biblioteca o ${tipo} "${nome}" (${codigo})`,
+        linhas: [
+          `Código: ${codigo}`, `Tipo: ${tipo}`, `Quando usar: ${descricao ?? "—"}`, `Rotina: ${rotina ?? "—"}`,
+          `Conteúdo: ${conteudo.length > 300 ? `${conteudo.slice(0, 300)}…` : conteudo}`,
+        ],
+      };
+    },
+    async executar(d, sb) {
+      const { existente_id: id, ...campos } = d;
+      if (id) {
+        const r = await sb.from("agente_biblioteca").update({ ...campos, ativo: true }).eq("id", id).select("id");
+        if (r.error) return { data: null, error: r.error };
+        // A RLS barra o update SEM erro (0 linhas): isso é recusa de permissão, não sucesso.
+        if (!r.data?.length) return { data: null, error: { message: "SEM_PERMISSAO" } };
+        return { data: r.data[0].id, error: null };
+      }
+      const r = await sb.from("agente_biblioteca").insert(campos).select("id").single();
+      return { data: r.data?.id ?? null, error: r.error };
+    },
+    resultado: (data) => ({ id: data }),
+  },
 };
 
 export const NOMES_OPERACOES = Object.keys(OPERACOES);
@@ -168,7 +225,8 @@ export const FERRAMENTAS_ALTERACOES = [
         "criar_tarefa_pontual {empresa_id, titulo, data}; " +
         "alterar_datas_tarefa {tarefa_id, prazo?, meta?, remover_meta?} (a meta atual é mantida, a menos que remover_meta=true); " +
         "comentar_tarefa {tarefa_id, texto}; " +
-        "transferir_tarefa {tarefa_id, para, de?} (de é opcional se a tarefa tem uma só responsável).",
+        "transferir_tarefa {tarefa_id, para, de?} (de é opcional se a tarefa tem uma só responsável); " +
+        "salvar_biblioteca {codigo, tipo (prompt|comando|link), nome, conteudo, descricao?, rotina?, tags?} (guarda um prompt, comando ou link para a equipe reutilizar).",
       parameters: {
         type: "object",
         properties: {
@@ -202,7 +260,7 @@ export async function alterarDados(args, sb, ctx) {
   // 1ª etapa: valida, normaliza e devolve a prévia, sem gravar nada.
   const op = OPERACOES[args.operacao];
   if (!op) return { erro: `Operação desconhecida. As disponíveis são: ${NOMES_OPERACOES.join(", ")}. Não existe operação para apagar nem para alterar cadastro.` };
-  const r = await op.preparar(args.dados && typeof args.dados === "object" ? args.dados : {}, sb);
+  const r = await op.preparar(args.dados && typeof args.dados === "object" ? args.dados : {}, sb, ctx);
   if (r.erro) return { erro: r.erro };
   ctx.novoPendente = { tipo: "alteracao", operacao: args.operacao, dados: r.dados, resumo: r.resumo };
   return {

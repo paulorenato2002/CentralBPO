@@ -3,7 +3,7 @@
 // Nada de chave de IA aqui: o navegador só fala com /api/agente/*, que roda no servidor.
 import { sb } from "./api.js";
 import { E } from "./estado.js";
-import { $, esc } from "./ui.js";
+import { $, esc, copiar } from "./ui.js";
 
 const CHAVE_CONVERSA = "central-agente-conversa";
 const MAX_ANEXOS = 10;
@@ -40,6 +40,8 @@ function estilo() {
     .ag-agente .agBolha{background:var(--line2);color:var(--ink);border-bottom-left-radius:3px}
     .ag-usuario .agBolha{background:var(--acc,#2f6f4f);color:#fff;border-bottom-right-radius:3px}
     .agFonte{font-size:10.5px;color:var(--ink3);letter-spacing:.02em}
+    .agCopiar{align-self:flex-start;border:0;background:none;color:var(--ink3);font-size:11px;cursor:pointer;padding:0}
+    .agCopiar:hover{color:var(--ink)}
     .agEntrada{border-top:1px solid var(--line);padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
     .agEntrada textarea{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);resize:vertical;min-height:46px}
     .agBarra{display:flex;justify-content:space-between;gap:8px}
@@ -69,6 +71,14 @@ function montar() {
       <input type="file" id="agArquivo" multiple hidden accept="${TIPOS_ACEITOS}">
     </form>`;
   $("#agForm").addEventListener("submit", enviar);
+  // "Copiar" nas respostas: o texto pronto (mensagem, prompt, comando) vai para a área de transferência.
+  $("#agLista").addEventListener("click", (ev) => {
+    const b = ev.target.closest(".agCopiar");
+    if (!b) return;
+    copiar(b.parentElement.querySelector(".agBolha").innerText);
+    b.textContent = "Copiado";
+    setTimeout(() => { b.textContent = "Copiar"; }, 1500);
+  });
   $("#agNova").onclick = novaConversa;
   $("#agAnexar").onclick = () => $("#agArquivo").click();
   $("#agArquivo").addEventListener("change", (ev) => {
@@ -94,14 +104,15 @@ function formatar(texto) {
     .replace(/\n/g, "<br>");
 }
 
-function escrever(papel, texto, ferramentas) {
+function escrever(papel, texto, ferramentas, copiavel = papel === "agente") {
   const lista = $("#agLista");
   const div = document.createElement("div");
   div.className = `agMsg ag-${papel}`;
   const rodape = ferramentas?.length
     ? `<div class="agFonte">usou: ${esc([...new Set(ferramentas)].join(", "))}</div>`
     : "";
-  div.innerHTML = `<div class="agBolha">${formatar(texto)}</div>${rodape}`;
+  const botaoCopiar = copiavel ? '<button type="button" class="agCopiar">Copiar</button>' : "";
+  div.innerHTML = `<div class="agBolha">${formatar(texto)}</div>${botaoCopiar}${rodape}`;
   lista.appendChild(div);
   lista.scrollTop = lista.scrollHeight;
   return div;
@@ -218,7 +229,7 @@ async function enviar(ev) {
   campo.value = "";
   ocupado = true;
   atualizarEnviar();
-  const esperando = escrever("agente", "…");
+  const esperando = escrever("agente", "…", null, false);
 
   try {
     const corpo = await chamar("/api/agente/chat", {
