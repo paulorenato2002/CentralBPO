@@ -74,7 +74,7 @@ function escrever(papel, texto, ferramentas) {
   const div = document.createElement("div");
   div.className = `agMsg ag-${papel}`;
   const rodape = ferramentas?.length
-    ? `<div class="agFonte">consultou: ${esc([...new Set(ferramentas)].join(", "))}</div>`
+    ? `<div class="agFonte">usou: ${esc([...new Set(ferramentas)].join(", "))}</div>`
     : "";
   div.innerHTML = `<div class="agBolha">${formatar(texto)}</div>${rodape}`;
   lista.appendChild(div);
@@ -86,7 +86,7 @@ function abertura() {
   const nome = (E.eu?.nome || "").split(" ")[0];
   escrever(
     "agente",
-    `Oi${nome ? ", " + nome : ""}. Posso consultar tarefas, prazos, rotinas e anotações dos seus clientes.\n\nExperimente: **o que está atrasado hoje?** ou **como faço a conferência de agendamentos da L2H?**`
+    `Oi${nome ? ", " + nome : ""}. Posso consultar tarefas, prazos, rotinas e anotações dos seus clientes, e registrar a anotação do dia.\n\nExperimente: **o que está atrasado hoje?** ou **anota na L2H que o boleto do aluguel ainda não chegou**`
   );
 }
 

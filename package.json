@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "test:db": "node supabase/testes/rodar.mjs",
+    "test:agente": "node --test testes/agente-ferramentas.test.mjs",
     "build": "node scripts/gerar-config.mjs",
     "dev": "node scripts/gerar-config.mjs && node scripts/servidor-local.mjs"
   },

@@ -27,6 +27,8 @@ createServer(async (req, res) => {
     const rota = caminho.slice(5);
     // Só nome de arquivo mesmo: letras, números, barra, hífen e sublinhado. Nada de "..".
     if (!/^[a-z0-9/_-]+$/.test(rota) || rota.includes("..")) { res.writeHead(400); return res.end("rota inválida"); }
+    // Como na Vercel: arquivo ou pasta que começa com "_" é auxiliar, não é rota.
+    if (rota.split("/").some((parte) => parte.startsWith("_"))) { res.writeHead(404); return res.end("função não encontrada"); }
     const alvo = normalize(join(RAIZ, "api", rota + ".js"));
     if (!alvo.startsWith(join(RAIZ, "api"))) { res.writeHead(403); return res.end(); }
     // O 404 é só quando a função não existe. Erro de dentro dela (uma dependência
