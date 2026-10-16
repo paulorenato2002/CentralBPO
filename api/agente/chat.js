@@ -117,6 +117,17 @@ const FERRAMENTAS = [
   },
 ];
 
+// Lê o "iss" do token sem validar nada: serve só para explicar o erro, nunca para liberar acesso.
+function emissorDiferente(token, urlServidor) {
+  try {
+    const carga = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    if (!carga.iss) return false;
+    return new URL(carga.iss).host !== new URL(urlServidor).host;
+  } catch {
+    return false;
+  }
+}
+
 function responder(res, status, corpo) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -228,7 +239,17 @@ export default async function handler(req, res) {
   });
 
   const { data: auth, error: erroAuth } = await sb.auth.getUser();
-  if (erroAuth || !auth?.user) return responder(res, 401, { erro: "sessão inválida" });
+  if (erroAuth || !auth?.user) {
+    // Um token bom contra o Supabase errado também cai aqui, e o "sessão inválida"
+    // seco manda a pessoa relogar à toa. Então compara quem emitiu o token com o
+    // servidor que estamos usando e diz qual é o caso.
+    if (emissorDiferente(autorizacao.slice(7), URL_SUPABASE)) {
+      return responder(res, 500, {
+        erro: "o servidor está apontado para outro Supabase (confira NEXT_PUBLIC_SUPABASE_URL e reinicie)",
+      });
+    }
+    return responder(res, 401, { erro: "sessão inválida" });
+  }
   const usuarioId = auth.user.id;
 
   const { data: perfil } = await sb
