@@ -37,7 +37,8 @@ body{zoom:var(--zoom,1.15);background:var(--paper);color:var(--ink);font:14px/1.
 /* barra lateral */
 aside{grid-row:1/3;background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:14px 10px}
 .brand{color:var(--side-act);font-weight:650;font-size:15px;padding:4px 10px 18px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-.brand-ico{width:34px;height:34px;border-radius:50%;flex:none}
+/* object-fit para o ícone nunca esticar se a arte não vier exatamente quadrada */
+.brand-ico{width:34px;height:34px;border-radius:50%;flex:none;object-fit:contain}
 .brand small{display:block;font-weight:400;font-size:11.5px;color:var(--side-ink)}
 aside a{display:block;color:var(--side-ink);text-decoration:none;padding:7px 10px;border-radius:3px;font-size:13.5px}
 aside a:hover{color:var(--side-act)}
@@ -56,6 +57,13 @@ aside .me{margin-top:auto;padding:10px;font-size:12.5px;border-top:1px solid rgb
 .timer b{font-variant-numeric:tabular-nums;font-weight:600;min-width:62px}
 .timer button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:3px;padding:3px 9px;cursor:pointer}
 .timer button:hover{color:var(--ink)}
+
+/* botão do agente: fica ao lado do cronômetro, em todas as telas */
+.robo{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:0 0 auto;
+  border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--ink2);cursor:pointer;transition:.12s}
+.robo:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.robo:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.robo[hidden]{display:none}
 
 main{padding:20px;overflow:auto}
 
@@ -148,6 +156,13 @@ dialog.perigo .ft button.red{background:var(--bad);color:#fff}
 :root{--p-edu:#6b4f9c;--p-edu-s:#efe9f7;--p-mur:#0e7c66;--p-mur-s:#e1f1ec;--p-pau:#3f5e8c;--p-pau-s:#e6ecf4}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--p-edu:#b49ae0;--p-edu-s:#2d2540;--p-mur:#4fb89c;--p-mur-s:#173129;--p-pau:#8ea8d1;--p-pau-s:#243246}}
 :root[data-theme="dark"]{--p-edu:#b49ae0;--p-edu-s:#2d2540;--p-mur:#4fb89c;--p-mur-s:#173129;--p-pau:#8ea8d1;--p-pau-s:#243246}
+
+/* Faixa de cores dos clientes no calendário (6, atribuídas pela ordem de código).
+   Matizes bem separadas no círculo e com contraste suficiente sobre os fundos
+   claros do .ev; no tema escuro cada uma clareia para manter a leitura. */
+:root{--c-cl0:#6b4f9c;--c-cl1:#0e7c66;--c-cl2:#3f5e8c;--c-cl3:#a8631b;--c-cl4:#b0422c;--c-cl5:#1f6f8b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c-cl0:#b49ae0;--c-cl1:#4fb89c;--c-cl2:#8ea8d1;--c-cl3:#d69a52;--c-cl4:#e07a63;--c-cl5:#6fb6d2}}
+:root[data-theme="dark"]{--c-cl0:#b49ae0;--c-cl1:#4fb89c;--c-cl2:#8ea8d1;--c-cl3:#d69a52;--c-cl4:#e07a63;--c-cl5:#6fb6d2}
 .cols{display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start}
 @media (max-width:980px){.cols{grid-template-columns:1fr}}
 .emphd #eProg{font-size:12.5px;color:var(--ink2)}
@@ -213,6 +228,26 @@ dialog.perigo .ft button.red{background:var(--bad);color:#fff}
 .ev.dia.v{color:var(--bad)}
 .ev.hl{outline:2px solid var(--accent);outline-offset:-1px}
 .ev .k{font-weight:700;margin-right:3px;color:var(--accent)}
+
+/* Cor por cliente e selo do tipo no calendário.
+   A borda esquerda do .ev já diz o ESTADO (atrasada, hoje, feita) e por isso não
+   foi usada aqui: o cliente entra como bolinha colorida antes do nome, e o tipo
+   de rotina como uma letra (D S Q M A P). Assim dá para separar dois blocos do
+   mesmo dia sem ler o título inteiro. */
+.ev .cli::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--cl,var(--ink3));margin-right:4px}
+.semcli{border-left:3px solid var(--cl,var(--line));padding-left:5px}
+.ev.cl0,.semcli.cl0{--cl:var(--c-cl0)} .ev.cl1,.semcli.cl1{--cl:var(--c-cl1)}
+.ev.cl2,.semcli.cl2{--cl:var(--c-cl2)} .ev.cl3,.semcli.cl3{--cl:var(--c-cl3)}
+.ev.cl4,.semcli.cl4{--cl:var(--c-cl4)} .ev.cl5,.semcli.cl5{--cl:var(--c-cl5)}
+
+.ev .tp{display:inline-block;min-width:13px;text-align:center;font-style:normal;font-size:10px;
+  font-weight:700;line-height:13px;border-radius:2px;margin-right:4px;
+  background:var(--line);color:var(--ink3);vertical-align:1px}
+.ev .tp.t-semanal{background:var(--accent-soft);color:var(--accent)}
+.ev .tp.t-mensal{background:var(--p-edu-s);color:var(--p-edu)}
+.ev .tp.t-anual{background:var(--warn-soft);color:var(--warn)}
+.ev .tp.t-pontual{background:var(--ok-soft);color:var(--ok)}
 .addp{font:inherit;font-size:12.5px;border:1px dashed var(--accent);color:var(--accent);background:transparent;border-radius:4px;padding:4px 10px;cursor:pointer}
 .novo{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--accent);border-radius:4px;padding:10px 12px;margin-bottom:14px}
 .novo[hidden]{display:none}
@@ -335,7 +370,7 @@ tr.exp:hover td{background:var(--paper)}
 .calgrid.modo-semana{grid-template-columns:repeat(7,minmax(0,1fr))}
 .calgrid.modo-semana .c{min-height:380px}
 .atit.semana{text-transform:none}
-.ev .cli{font-weight:700;color:var(--ink2);margin-right:3px}
+.ev .cli{font-weight:700;color:var(--cl,var(--ink2));margin-right:3px}
 .ev.mais{background:transparent;border-left-color:transparent;color:var(--accent);padding-left:0}
 .semcli{font-size:11px;font-weight:700;color:var(--ink2);margin:6px 0 1px;border-top:1px solid var(--line2);padding-top:4px}
 .drawer.largo{width:560px}
