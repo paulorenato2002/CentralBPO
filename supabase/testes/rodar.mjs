@@ -340,5 +340,14 @@ await db.query(`select set_config('request.jwt.claim.role', '', false)`);
 await como(P.Adm);
 checar("equipe com nome, e-mail e papel", (await val(`select count(*) from public.central_vw_equipe where email like '%@exemplo.com' and papel is not null`)) == 5);
 
+// ---------- 10. reabrir tarefa concluída ----------
+console.log("\n10. Reabrir tarefa concluída");
+await como(P.Ana);
+await db.query(`select public.central_reabrir_tarefa($1)`, [tEmail]);
+const ra = await um(`select status, concluida_por, duracao_segundos from public.tarefas_operacionais where id = $1`, [tEmail]);
+checar("responsável reabre a tarefa concluída", ra.status === "pendente" && ra.concluida_por === null && ra.duracao_segundos === null, JSON.stringify(ra));
+await erro("não reabre o que não está concluído", `select public.central_reabrir_tarefa('${tEmail}')`, "NAO_CONCLUIDA");
+checar("reabertura fica no histórico", (await val(`select count(*) from public.eventos_operacionais where descricao like 'reabriu a tarefa%'`)) >= 1);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

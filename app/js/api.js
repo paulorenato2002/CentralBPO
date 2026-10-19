@@ -23,6 +23,7 @@ const MENSAGENS = {
   SESSAO_NAO_RODANDO: "O cronômetro deste cliente não está rodando.",
   JA_FINALIZADA: "Este cliente já foi finalizado hoje.",
   TAREFA_INVALIDA: "Tarefa não encontrada.",
+  NAO_CONCLUIDA: "Esta tarefa já está em aberto.",
   JA_CONCLUIDA: "Esta tarefa já foi concluída.",
   SEM_PERMISSAO: "Você não tem permissão para isso.",
   CHECKLIST_INCOMPLETO: "Marque todos os itens do checklist antes de concluir.",

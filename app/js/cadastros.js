@@ -245,24 +245,41 @@ async function carregarConsultas() {
     || '<li class="vazio">Nenhuma consulta ainda.</li>';
 }
 
-/* ======================= TAREFAS (rotinas) ======================= */
+/* ======================= TAREFAS (uma tarefa → os clientes vinculados) =======================
+   Cada tarefa (nome, tipo, checklist) vale para os clientes marcados nela. Por cliente variam o dia,
+   o responsável e se está ativa. No banco: uma rotina por cliente (rotinas_empresa), todas com o
+   mesmo modelo (nome). Salvar chama central_salvar_rotina / central_excluir_rotina cliente a cliente. */
 const FREQ = { diaria: "Diário", semanal: "Semanal", quinzenal: "Quinzenal", mensal: "Mensal", anual: "Anual" };
 const DSEM = { 1: "segunda", 2: "terça", 3: "quarta", 4: "quinta", 5: "sexta", 6: "sábado", 7: "domingo", 0: "domingo" };
 const DSEM_TXT = { segunda: 1, terca: 2, terça: 2, quarta: 3, quinta: 4, sexta: 5 };
 const MES = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const ctTipos = new Set();
-let ctSit = "", rotinas = [], rotAberta = null, rCk = [];
+let ctSit = "", rotinas = [], tarefas = [], tarAberta = null, rCk = [], vinc = [];
 
 const diaSemanaDe = (g) => { const d = g.dia_semana; if (typeof d === "number") return d; const t = String(d || "").toLowerCase().replace("-feira", "").trim(); return DSEM_TXT[t] || Number(t) || 5; };
 const diasMes = (g) => (Array.isArray(g.dias_mes) ? g.dias_mes : g.dia_mes ? [g.dia_mes] : []);
-function recRot(r) {
-  const g = r.regra_agendamento || {};
-  if (r.frequencia === "diaria") return "Diária · seg a sex";
-  if (r.frequencia === "semanal") return `Semanal · toda ${DSEM[diaSemanaDe(g)]}`;
-  if (r.frequencia === "quinzenal") return `Quinzenal · a cada 15 dias desde ${dmy(r.vigencia_inicio)}`;
-  if (r.frequencia === "mensal") return `Mensal · entrega dia ${diasMes(g).join(" e ") || "?"}${g.dia_meta ? ` · meta dia ${g.dia_meta}` : ""}`;
-  if (r.frequencia === "anual") return `Anual · ${g.dia_mes || "?"} de ${MES[Number(g.mes)] || "?"}`;
-  return r.frequencia;
+function regraTexto(freq, g, inicio) {
+  g = g || {};
+  if (freq === "diaria") return "seg a sex";
+  if (freq === "semanal") return `toda ${DSEM[diaSemanaDe(g)]}`;
+  if (freq === "quinzenal") return `a cada 15 dias desde ${dmy(inicio)}`;
+  if (freq === "mensal") return `dia ${diasMes(g).join(" e ") || "?"}${g.dia_meta ? ` · meta ${g.dia_meta}` : ""}`;
+  if (freq === "anual") return `${g.dia_mes || "?"} de ${MES[Number(g.mes)] || "?"}`;
+  return freq;
+}
+
+// agrupa as rotinas por tarefa (nome)
+function agrupar() {
+  const m = new Map();
+  rotinas.forEach((r) => { if (!m.has(r.nome)) m.set(r.nome, { nome: r.nome, rotinas: [] }); m.get(r.nome).rotinas.push(r); });
+  tarefas = [...m.values()].map((t) => {
+    const freqs = [...new Set(t.rotinas.map((r) => r.frequencia))];
+    const regras = [...new Set(t.rotinas.map((r) => regraTexto(r.frequencia, r.regra_agendamento, r.vigencia_inicio)))];
+    const resp = [...new Set(t.rotinas.flatMap((r) => r.responsaveis || []))];
+    const ck = t.rotinas.map((r) => r.checklist || []).sort((a, b) => b.length - a.length)[0] || [];
+    return { ...t, freq: freqs.length === 1 ? freqs[0] : null, regra: regras.length === 1 ? regras[0] : "varia por cliente", resp, checklist: ck,
+      ativas: t.rotinas.filter((r) => r.situacao === "ativa").length };
+  });
 }
 
 function iniciarRotinas() {
@@ -271,20 +288,34 @@ function iniciarRotinas() {
   liga("#ctAtiva", (b) => { ctSit = b.dataset.v; document.querySelectorAll("#ctAtiva button").forEach((x) => x.classList.toggle("on", x === b)); }, () => desenharRotinas(false).catch(avisoErro));
   ["#ctEmp", "#ctResp"].forEach((s) => $(s).addEventListener("change", () => desenharRotinas(false).catch(avisoErro)));
   $("#ctQ").addEventListener("input", () => desenharRotinas(false).catch(avisoErro));
-  $("#ctRows").addEventListener("click", (ev) => { const tr = ev.target.closest("tr[data-rot]"); if (tr) abrirRotina(tr.dataset.rot); });
-  // sem permissão, "nova rotina" vira pedido direto (o banco registra antes de validar)
-  $("#ctNova").onclick = () => (permite("rotina") ? abrirRotina(null) : rpc("central_salvar_rotina", { p_id: null, p_empresa: $("#ctEmp").value || (E.clientes[0] || {}).id || null,
-    p_nome: "rotina nova", p_frequencia: "diaria", p_regra: {}, p_inicio: E.hoje, p_fim: null, p_ativa: true, p_responsaveis: [], p_checklist: [] }).then((r) => avisoGravacao(r, "")).catch(avisoErro));
+  $("#ctRows").addEventListener("click", (ev) => { const tr = ev.target.closest("tr[data-tar]"); if (tr) abrirTarefa(tr.dataset.tar); });
+  // sem permissão, "nova tarefa" vira pedido direto (o banco registra antes de validar)
+  $("#ctNova").onclick = () => (permite("rotina") ? abrirTarefa(null) : rpc("central_salvar_rotina", { p_id: null, p_empresa: $("#ctEmp").value || (E.clientes[0] || {}).id || null,
+    p_nome: "tarefa nova", p_frequencia: "diaria", p_regra: {}, p_inicio: E.hoje, p_fim: null, p_ativa: true, p_responsaveis: [], p_checklist: [] }).then((r) => avisoGravacao(r, "")).catch(avisoErro));
   $("#rFechar").onclick = $("#rCanc").onclick = () => ($("#rotF").hidden = true);
-  $("#rForm").elements.tipo.addEventListener("change", camposDoTipo);
+  $("#rForm").elements.tipo.addEventListener("change", () => { camposDoTipo(); desenharVinculos(); });
   $("#rCkAdd").onclick = () => { const v = $("#rCkNovo").value.trim(); if (!v) return; rCk.push(v); $("#rCkNovo").value = ""; desenharCk(true); };
   $("#rCkNovo").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); $("#rCkAdd").click(); } });
   $("#rCk").addEventListener("click", (ev) => { const b = ev.target.closest("[data-rmck]"); if (b) { rCk.splice(Number(b.dataset.rmck), 1); desenharCk(true); } });
-  $("#rForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#rSalvar"), salvarRotina)(); };
+  // tabela de clientes: guarda o que a pessoa mexe em "vinc"
+  $("#rClis").addEventListener("input", (ev) => {
+    const el = ev.target.closest("[data-v]"); if (!el) return;
+    const v = vinc[Number(el.closest("tr").dataset.i)], k = el.dataset.v;
+    v[k] = el.type === "checkbox" ? el.checked : el.value;
+    if (k === "on") el.closest("tr").classList.toggle("off", !el.checked);
+  });
+  $("#rAplicar").onclick = () => {
+    const f = $("#rForm").elements;
+    vinc.filter((v) => v.on).forEach((v) => { if (f.todosDia.value) { v.dia = f.todosDia.value; v.diaSem = f.todosDia.value; } if (f.todosResp.value) v.resp = f.todosResp.value; });
+    desenharVinculos();
+  };
+  $("#rForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#rSalvar"), salvarTarefa)(); };
   $("#rExcluir").onclick = () => {
-    const r = rotinas.find((x) => x.id === rotAberta); if (!r) return;
-    perguntar(`Excluir a rotina "${r.nome}" de ${r.empresa_nome}?`, "Para de gerar tarefas a partir de amanhã (as futuras em aberto são apagadas). As de hoje e as já concluídas ficam no histórico.",
-      [{ txt: "Excluir rotina", cls: "red", fn: async () => { const x = await rpc("central_excluir_rotina", { p_id: r.id }); avisoGravacao(x, "Rotina excluída"); $("#rotF").hidden = true; await desenharRotinas(); } },
+    const t = tarefas.find((x) => x.nome === tarAberta); if (!t) return;
+    perguntar(`Excluir a tarefa "${t.nome}" de todos os clientes?`, `Para de gerar em ${t.rotinas.length} cliente(s) a partir de amanhã (as futuras em aberto são apagadas). As de hoje e as já concluídas ficam no histórico.`,
+      [{ txt: "Excluir tarefa", cls: "red", fn: async () => {
+        for (const r of t.rotinas) await rpc("central_excluir_rotina", { p_id: r.id });
+        toast("Tarefa excluída"); $("#rotF").hidden = true; await desenharRotinas(); } },
        { txt: "Voltar" }], true);
   };
 }
@@ -294,24 +325,27 @@ export async function desenharRotinas(recarregar = true) {
     E.clientes.forEach((c) => $("#ctEmp").insertAdjacentHTML("beforeend", `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`));
     [...E.equipe.entries()].filter(([, x]) => x.ativo).forEach(([u, x]) => $("#ctResp").insertAdjacentHTML("beforeend", `<option value="${u}">${esc(x.nome)}</option>`));
   }
-  if (recarregar) rotinas = await todas(() => sb.from("central_vw_rotinas").select("*").order("id"));
+  if (recarregar) { rotinas = await todas(() => sb.from("central_vw_rotinas").select("*").order("id")); agrupar(); }
   const adm = permite("rotina");
-  $("#ctNova").textContent = adm ? "+ Nova rotina" : "Pedir rotina nova ao Adm";
-  $("#ctFoot").textContent = adm ? "Clique numa rotina para alterar, pausar ou excluir. Mudanças valem a partir de amanhã: as tarefas futuras em aberto são refeitas."
-    : "Só o Adm cadastra, altera ou exclui rotinas. Clique numa rotina para ver os detalhes ou pedir alteração.";
+  $("#ctNova").textContent = adm ? "+ Nova tarefa" : "Pedir tarefa nova ao Adm";
+  $("#ctFoot").textContent = adm ? "Cada tarefa vale para os clientes marcados nela. Clique para mudar clientes, dia, responsável ou checklist. Mudanças valem a partir de amanhã."
+    : "Só o Adm cadastra, altera ou exclui tarefas. Clique numa tarefa para ver os detalhes ou pedir alteração.";
   const fe = $("#ctEmp").value, fr = $("#ctResp").value, busca = $("#ctQ").value.trim().toLowerCase();
   const ord = { diaria: 1, semanal: 2, quinzenal: 3, mensal: 4, anual: 5 };
-  const lista = rotinas.filter((r) => (!fe || r.empresa_id === fe) && (!fr || (r.responsaveis || []).includes(fr)) && (!ctTipos.size || ctTipos.has(r.frequencia)) &&
-      (!ctSit || r.situacao === ctSit) && (!busca || r.nome.toLowerCase().includes(busca)))
-    .sort((a, b) => String(a.empresa_codigo).localeCompare(String(b.empresa_codigo)) || (ord[a.frequencia] || 9) - (ord[b.frequencia] || 9) || a.nome.localeCompare(b.nome));
-  $("#ctRows").innerHTML = lista.map((r) => `<tr data-rot="${r.id}" class="${r.situacao === "ativa" ? "" : "pausada"}">
-    <td class="emp"><b>${esc(r.empresa_nome)}</b><small>${esc(r.empresa_codigo)}</small></td>
-    <td>${esc(r.nome)} <span class="tipo">${esc(FREQ[r.frequencia] || r.frequencia)}</span></td>
-    <td style="font-size:12.5px">${esc(recRot(r))}${r.vigencia_fim ? `<div class="zero" style="font-size:11px">até ${dmy(r.vigencia_fim)}</div>` : ""}</td>
-    <td>${(r.responsaveis || []).map(pp).join(" ") || '<span class="zero">—</span>'}</td>
-    <td class="n">${(r.checklist || []).length ? `${r.checklist.length} itens` : '<span class="zero">—</span>'}</td>
-    <td><span class="tag ${r.situacao === "ativa" ? "t-ok" : "t-plain"}">${r.situacao === "ativa" ? "Ativa" : "Pausada"}</span></td></tr>`).join("")
-    || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhuma rotina com esse filtro</td></tr>';
+  const lista = tarefas.filter((t) => (!fe || t.rotinas.some((r) => r.empresa_id === fe)) && (!fr || t.resp.includes(fr)) &&
+      (!ctTipos.size || t.rotinas.some((r) => ctTipos.has(r.frequencia))) &&
+      (!ctSit || (ctSit === "ativa" ? t.ativas > 0 : t.ativas < t.rotinas.length)) && (!busca || t.nome.toLowerCase().includes(busca)))
+    .sort((a, b) => (ord[a.freq] || 9) - (ord[b.freq] || 9) || a.nome.localeCompare(b.nome));
+  $("#ctRows").innerHTML = lista.map((t) => {
+    const clis = t.rotinas.map((r) => cliente(r.empresa_id)).sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
+    return `<tr data-tar="${esc(t.nome)}" class="${t.ativas ? "" : "pausada"}">
+    <td><b>${esc(t.nome)}</b> <span class="tipo">${esc(t.freq ? FREQ[t.freq] : "vários tipos")}</span></td>
+    <td style="white-space:normal;max-width:300px">${clis.map((c) => `<span class="cli-chip" title="${esc(c.razao || c.nome)}">${esc(c.codigo)} ${esc(c.nome)}</span>`).join(" ")}</td>
+    <td style="font-size:12.5px">${esc(t.regra)}</td>
+    <td>${t.resp.map(pp).join(" ") || '<span class="zero">—</span>'}</td>
+    <td class="n">${t.checklist.length ? `${t.checklist.length} itens` : '<span class="zero">—</span>'}</td>
+    <td><span class="tag ${t.ativas ? "t-ok" : "t-plain"}">${t.ativas === t.rotinas.length ? "Ativa" : t.ativas ? `${t.ativas} de ${t.rotinas.length} ativas` : "Pausada"}</span></td></tr>`;
+  }).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhuma tarefa com esse filtro</td></tr>';
 }
 
 function desenharCk(edita) {
@@ -319,79 +353,118 @@ function desenharCk(edita) {
 }
 function camposDoTipo() { const tp = $("#rForm").elements.tipo.value; document.querySelectorAll("#rForm [data-so]").forEach((l) => (l.hidden = !l.dataset.so.split(" ").includes(tp))); }
 
-function abrirRotina(id) {
-  const adm = permite("rotina"), novo = id === null;
-  const r = novo ? { empresa_id: $("#ctEmp").value || "", nome: "", frequencia: "diaria", regra_agendamento: {}, responsaveis: [], checklist: [], situacao: "ativa", vigencia_inicio: somaDias(E.hoje, 1), vigencia_fim: null }
-    : rotinas.find((x) => x.id === id);
-  rotAberta = novo ? null : id; rCk = [...(r.checklist || [])];
-  const g = r.regra_agendamento || {};
-  $("#rTit").textContent = novo ? "Nova rotina" : `${r.nome} · ${r.empresa_nome}`;
-  $("#rSub").innerHTML = novo ? '<span class="criada">Gera as tarefas automaticamente a partir da data escolhida.</span>'
-    : `<span class="tag ${r.situacao === "ativa" ? "t-ok" : "t-plain"}">${r.situacao === "ativa" ? "Ativa" : "Pausada"}</span><span class="criada">${esc(recRot(r))}</span>`;
+// uma linha por cliente: vinculado?, dia (conforme o tipo), responsável, ativa
+function desenharVinculos() {
+  const tipo = $("#rForm").elements.tipo.value, adm = permite("rotina"), dis = adm ? "" : "disabled";
+  const gente = new Map(equipeAtiva()); vinc.forEach((v) => v.respOrig.forEach((u) => gente.set(u, E.equipe.get(u) || { nome: nomeDe(u) })));
+  const opcGente = (sel) => [...gente.entries()].map(([u, x]) => `<option value="${u}" ${u === sel ? "selected" : ""}>${esc(x.nome)}</option>`).join("");
+  const opcSem = (sel) => [1, 2, 3, 4, 5].map((d) => `<option value="${d}" ${String(d) === String(sel) ? "selected" : ""}>${DSEM[d]}</option>`).join("");
+  const opcMes = (sel) => MES.slice(1).map((m, i) => `<option value="${i + 1}" ${String(i + 1) === String(sel) ? "selected" : ""}>${m}</option>`).join("");
+  const regra = (v) => tipo === "semanal" ? `<select data-v="diaSem" ${dis} aria-label="Dia da semana">${opcSem(v.diaSem)}</select>`
+    : tipo === "mensal" ? `<input data-v="dia" type="number" min="1" max="31" value="${esc(v.dia)}" ${dis} aria-label="Dia da entrega" title="dia da entrega"> <input data-v="meta" type="number" min="1" max="31" value="${esc(v.meta)}" placeholder="meta" ${dis} aria-label="Dia da meta" title="dia da meta (opcional)">`
+    : tipo === "anual" ? `<input data-v="dia" type="number" min="1" max="31" value="${esc(v.dia)}" ${dis} aria-label="Dia"> <select data-v="mes" ${dis} aria-label="Mês">${opcMes(v.mes)}</select>`
+    : '<span class="zero">—</span>';
+  $("#rClis").innerHTML = `<table class="vtab"><thead><tr><th></th><th>Cliente</th><th>${tipo === "semanal" ? "Dia" : tipo === "mensal" ? "Dia · meta" : tipo === "anual" ? "Dia · mês" : ""}</th><th>Responsável</th><th>Ativa</th></tr></thead><tbody>${
+    vinc.map((v, i) => { const c = cliente(v.empresa_id); return `<tr data-i="${i}" class="${v.on ? "" : "off"}">
+      <td><input type="checkbox" data-v="on" ${v.on ? "checked" : ""} ${dis} aria-label="Vincular ${esc(c.nome)}"></td>
+      <td><b>${esc(c.codigo)}</b> ${esc(c.nome)}${v.multi ? ' <span class="zero" style="font-size:11px">· vários dias</span>' : ""}</td>
+      <td>${regra(v)}</td>
+      <td><select data-v="resp" ${dis} aria-label="Responsável em ${esc(c.nome)}"><option value="">—</option>${opcGente(v.resp)}</select></td>
+      <td><input type="checkbox" data-v="ativa" ${v.ativa ? "checked" : ""} ${dis} aria-label="Ativa em ${esc(c.nome)}"></td></tr>`; }).join("")}</tbody></table>`;
+  const f = $("#rForm").elements;
+  f.todosResp.innerHTML = `<option value="">responsável…</option>${opcGente("")}`;
+  f.todosDia.hidden = !["semanal", "mensal", "anual"].includes(tipo);
+  f.todosDia.placeholder = tipo === "semanal" ? "dia 1-5" : "dia";
+  $("#rTodos").hidden = !adm;
+}
+
+function abrirTarefa(nome) {
+  const adm = permite("rotina"), novo = nome === null;
+  const t = novo ? { nome: "", rotinas: [], freq: "diaria", checklist: [] } : tarefas.find((x) => x.nome === nome);
+  tarAberta = novo ? null : nome; rCk = [...(t.checklist || [])];
+  const por = new Map(t.rotinas.map((r) => [r.empresa_id, r]));
+  const fe = $("#ctEmp").value;
+  vinc = E.clientes.map((c) => {
+    const r = por.get(c.id), g = (r && r.regra_agendamento) || {};
+    return { empresa_id: c.id, rot: r || null, on: !!r || (novo && fe === c.id), ativa: r ? r.situacao === "ativa" : true,
+      diaSem: diaSemanaDe(g), dia: diasMes(g)[0] || "", meta: g.dia_meta || "", mes: g.mes || 1, multi: Array.isArray(g.dias_mes) && g.dias_mes.length > 1,
+      resp: ((r && r.responsaveis) || [])[0] || "", respOrig: (r && r.responsaveis) || [] };
+  });
+  const primeira = t.rotinas[0];
+  $("#rTit").textContent = novo ? "Nova tarefa" : t.nome;
+  $("#rSub").innerHTML = novo ? '<span class="criada">Marque os clientes. Gera as tarefas automaticamente a partir da data escolhida.</span>'
+    : `<span class="criada">${t.rotinas.length} cliente(s) · ${esc(t.regra)}</span>`;
   const el = $("#rForm").elements;
-  el.nome.value = r.nome; el.tipo.value = r.frequencia; el.diaSem.value = String(Math.min(5, Math.max(1, diaSemanaDe(g))));
-  el.dia.value = diasMes(g)[0] || ""; el.meta.value = g.dia_meta || ""; el.mes.value = String(g.mes || 1);
-  el.inicio.value = r.vigencia_inicio || ""; el.fim.value = r.vigencia_fim || ""; el.ativa.checked = r.situacao === "ativa";
+  el.nome.value = t.nome; el.tipo.value = t.freq || (primeira ? primeira.frequencia : "diaria");
+  el.inicio.value = (primeira && primeira.vigencia_inicio) || somaDias(E.hoje, 1); el.fim.value = (primeira && primeira.vigencia_fim) || "";
   [...$("#rForm").querySelectorAll("input,select")].forEach((i) => (i.disabled = !adm));
-  $("#rCliSec").querySelector("h5").textContent = novo ? "Clientes" : "Cliente";
-  $("#rCliHint").hidden = !novo;
-  $("#rClis").innerHTML = novo ? E.clientes.map((c) => `<label><input type="checkbox" value="${c.id}" ${r.empresa_id === c.id ? "checked" : ""}>${esc(c.codigo)} · ${esc(c.nome)}</label>`).join("")
-    : `<span class="pp" style="background:var(--line2)">${esc(r.empresa_codigo)} · ${esc(r.empresa_nome)}</span>`;
-  const gente = new Map(equipeAtiva()); (r.responsaveis || []).forEach((u) => gente.set(u, E.equipe.get(u) || { nome: nomeDe(u) }));
-  $("#rResp").innerHTML = [...gente.entries()].map(([u, x]) => `<label><input type="checkbox" value="${u}" ${(r.responsaveis || []).includes(u) ? "checked" : ""} ${adm ? "" : "disabled"}>${esc(x.nome)}</label>`).join("");
   desenharCk(adm); $("#rCkNovo").parentElement.hidden = !adm;
   $("#rSalvar").textContent = adm ? "Salvar" : "Pedir alteração ao Adm";
   $("#rExcluir").hidden = novo || !adm;
-  const varios = !novo && r.frequencia === "mensal" && Array.isArray(g.dias_mes) && g.dias_mes.length > 1;
-  msg("#rMsg", varios ? `Esta rotina entrega em vários dias do mês (${g.dias_mes.join(" e ")}). Se mudar o dia da entrega, passa a ser um dia só.` : "");
-  camposDoTipo();
+  msg("#rMsg", !novo && !t.freq ? "Esta tarefa tem tipos diferentes por cliente. Ao salvar, todos os clientes marcados passam a usar o tipo escolhido acima." : "");
+  camposDoTipo(); desenharVinculos();
   abrirGaveta("#rotF");
 }
 
-async function salvarRotina() {
-  const el = $("#rForm").elements, adm = permite("rotina"), novo = rotAberta === null;
-  const orig = novo ? null : rotinas.find((x) => x.id === rotAberta);
+async function salvarTarefa() {
+  const el = $("#rForm").elements, adm = permite("rotina"), novo = tarAberta === null;
+  const t = novo ? null : tarefas.find((x) => x.nome === tarAberta);
   if (!adm) {   // sem permissão: o banco registra o pedido (antes de validar qualquer coisa)
-    const r = await rpc("central_salvar_rotina", { p_id: rotAberta, p_empresa: orig ? orig.empresa_id : ($("#ctEmp").value || E.clientes[0]?.id || null), p_nome: orig ? orig.nome : "rotina nova",
-      p_frequencia: orig ? orig.frequencia : "diaria", p_regra: {}, p_inicio: E.hoje, p_fim: null, p_ativa: true, p_responsaveis: [], p_checklist: [] });
+    const r0 = t && t.rotinas[0];
+    const r = await rpc("central_salvar_rotina", { p_id: r0 ? r0.id : null, p_empresa: r0 ? r0.empresa_id : (E.clientes[0] || {}).id || null, p_nome: t ? t.nome : "tarefa nova",
+      p_frequencia: r0 ? r0.frequencia : "diaria", p_regra: {}, p_inicio: E.hoje, p_fim: null, p_ativa: true, p_responsaveis: [], p_checklist: [] });
     avisoGravacao(r, ""); $("#rotF").hidden = true; return;
   }
-  const tipo = el.tipo.value, dia = Number(el.dia.value) || null, meta = Number(el.meta.value) || null;
-  const resp = [...document.querySelectorAll("#rResp input:checked")].map((i) => i.value);
-  const nome = el.nome.value.trim();
+  const tipo = el.tipo.value, nome = el.nome.value.trim(), inicio = el.inicio.value, fim = el.fim.value || null;
   if (!nome) return msg("#rMsg", "Dê um nome à tarefa.");
-  if (!resp.length) return msg("#rMsg", "Escolha pelo menos um responsável.");
-  if ((tipo === "mensal" || tipo === "anual") && !dia) return msg("#rMsg", "Informe o dia da entrega.");
-  if (tipo === "mensal" && meta && meta > dia) return msg("#rMsg", "A meta não pode ser depois da entrega.");
-  if (!el.inicio.value) return msg("#rMsg", "Informe a partir de quando vale.");
-  if (el.fim.value && el.fim.value < el.inicio.value) return msg("#rMsg", "A data final é antes da inicial.");
-  // mantém o que a regra já tinha (ex.: exceções) e troca só o que a tela edita
-  const regra = { ...((orig && orig.regra_agendamento) || {}) };
-  if (tipo === "semanal") regra.dia_semana = Number(el.diaSem.value);
-  if (tipo === "mensal" || tipo === "anual") {
-    const antes = orig && orig.regra_agendamento && Array.isArray(orig.regra_agendamento.dias_mes) ? orig.regra_agendamento.dias_mes : null;
-    regra.dia_mes = dia;
-    if (antes && Number(antes[0]) === dia && tipo === "mensal") regra.dias_mes = antes; else delete regra.dias_mes;
+  if (!inicio) return msg("#rMsg", "Informe a partir de quando vale.");
+  if (fim && fim < inicio) return msg("#rMsg", "A data final é antes da inicial.");
+  if (novo && tarefas.some((x) => x.nome.toLowerCase() === nome.toLowerCase())) return msg("#rMsg", "Já existe uma tarefa com esse nome: abra ela e marque os clientes.");
+  const marcados = vinc.filter((v) => v.on);
+  if (!marcados.length) return msg("#rMsg", "Marque pelo menos um cliente.");
+  for (const v of marcados) {
+    const c = cliente(v.empresa_id).nome;
+    if (!v.resp && !v.respOrig.length) return msg("#rMsg", `Escolha o responsável em ${c}.`);
+    if ((tipo === "mensal" || tipo === "anual") && !(Number(v.dia) >= 1 && Number(v.dia) <= 31)) return msg("#rMsg", `Informe o dia da entrega em ${c}.`);
+    if (tipo === "mensal" && v.meta && Number(v.meta) > Number(v.dia)) return msg("#rMsg", `Em ${c}, a meta não pode ser depois da entrega.`);
   }
-  if (tipo === "mensal") { if (meta) regra.dia_meta = meta; else delete regra.dia_meta; }
-  if (tipo === "anual") regra.mes = Number(el.mes.value);
-  const base = { p_nome: nome, p_frequencia: tipo, p_regra: regra, p_inicio: el.inicio.value, p_fim: el.fim.value || null, p_ativa: el.ativa.checked, p_responsaveis: resp, p_checklist: rCk };
-  if (!novo) {
-    const r = await rpc("central_salvar_rotina", { p_id: orig.id, p_empresa: orig.empresa_id, ...base });
-    avisoGravacao(r, "Rotina atualizada · vale a partir de amanhã");
-  } else {
-    const alvo = [...document.querySelectorAll("#rClis input:checked")].map((i) => i.value);
-    if (!alvo.length) return msg("#rMsg", "Escolha pelo menos um cliente.");
-    const falhas = [];
-    for (const emp of alvo) {
-      try { await rpc("central_salvar_rotina", { p_id: null, p_empresa: emp, ...base }); }
-      catch (e) { falhas.push(`${cliente(emp).nome}: ${e.message}`); }
+  const tirar = vinc.filter((v) => !v.on && v.rot);
+  const executar = async () => {
+    const falhas = []; let feitos = 0;
+    for (const v of marcados) {
+      const orig = v.rot, g0 = (orig && orig.regra_agendamento) || {};
+      // mantém o que a regra já tinha (ex.: exceções, vários dias) e troca só o que a tela edita
+      const regra = { ...g0 };
+      if (tipo === "semanal") regra.dia_semana = Number(v.diaSem);
+      if (tipo === "mensal" || tipo === "anual") {
+        regra.dia_mes = Number(v.dia);
+        if (!(tipo === "mensal" && Array.isArray(g0.dias_mes) && Number(g0.dias_mes[0]) === Number(v.dia))) delete regra.dias_mes;
+      }
+      if (tipo === "mensal") { if (v.meta) regra.dia_meta = Number(v.meta); else delete regra.dia_meta; }
+      if (tipo === "anual") regra.mes = Number(v.mes);
+      const resp = v.resp && v.resp !== v.respOrig[0] ? [v.resp] : v.respOrig.length ? v.respOrig : [v.resp];
+      const p = { p_id: orig ? orig.id : null, p_empresa: v.empresa_id, p_nome: nome, p_frequencia: tipo, p_regra: regra,
+        p_inicio: (orig && orig.vigencia_inicio) || inicio, p_fim: fim, p_ativa: !!v.ativa, p_responsaveis: resp, p_checklist: rCk };
+      // não mexe no que não mudou (salvar refaz as tarefas futuras daquele cliente)
+      const igual = orig && orig.nome === nome && orig.frequencia === tipo && JSON.stringify(orig.regra_agendamento || {}) === JSON.stringify(regra) &&
+        (orig.situacao === "ativa") === !!v.ativa && JSON.stringify(orig.responsaveis || []) === JSON.stringify(resp) &&
+        JSON.stringify(orig.checklist || []) === JSON.stringify(rCk) && (orig.vigencia_fim || null) === fim;
+      if (igual) continue;
+      try { await rpc("central_salvar_rotina", p); feitos++; } catch (e) { falhas.push(`${cliente(v.empresa_id).nome}: ${e.message}`); }
     }
-    if (falhas.length) { await desenharRotinas(); return msg("#rMsg", `Criada em ${alvo.length - falhas.length} de ${alvo.length}. ${falhas.join(" · ")}`); }
-    toast(`${alvo.length} rotina(s) criada(s)`);
+    for (const v of tirar) {
+      try { await rpc("central_excluir_rotina", { p_id: v.rot.id }); feitos++; } catch (e) { falhas.push(`${cliente(v.empresa_id).nome}: ${e.message}`); }
+    }
+    await desenharRotinas();
+    if (falhas.length) return msg("#rMsg", `Salvo em ${feitos}; não deu em: ${falhas.join(" · ")}`);
+    toast(feitos ? `Tarefa salva · ${feitos} cliente(s) atualizado(s) · vale a partir de amanhã` : "Nada mudou");
+    $("#rotF").hidden = true;
+  };
+  if (tirar.length) {
+    return perguntar(`Desvincular ${tirar.length} cliente(s)?`, `${esc(tirar.map((v) => cliente(v.empresa_id).nome).join(", "))}: a tarefa para de gerar a partir de amanhã (as futuras em aberto são apagadas). As de hoje e as concluídas ficam no histórico.`,
+      [{ txt: "Salvar e desvincular", cls: "red", fn: executar }, { txt: "Voltar" }], true);
   }
-  $("#rotF").hidden = true;
-  await desenharRotinas();
+  await executar();
 }
 
 /* ======================= COLABORADORES + PERMISSÕES ======================= */

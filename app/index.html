@@ -242,13 +242,13 @@
       <select id="ctEmp"><option value="">Todos os clientes</option></select>
       <select id="ctResp"><option value="">Todos os responsáveis</option></select>
       <div class="chips" id="ctTipos"></div>
-      <div class="seg" id="ctAtiva"><button data-v="" class="on">Todas</button><button data-v="ativa">Ativas</button><button data-v="pausada">Pausadas</button></div>
+      <div class="seg" id="ctAtiva"><button data-v="" class="on">Todas</button><button data-v="ativa">Ativas</button><button data-v="pausada">Com pausa</button></div>
       <span class="sp"></span>
       <input type="search" id="ctQ" placeholder="Buscar tarefa">
       <button class="dbtn" id="ctNova" style="margin:0" type="button"></button>
     </div>
     <div class="tbl"><table>
-      <thead><tr><th class="nosort">Cliente</th><th class="nosort">Tarefa</th><th class="nosort">Recorrência</th><th class="nosort">Responsáveis</th><th class="nosort n">Checklist</th><th class="nosort">Situação</th></tr></thead>
+      <thead><tr><th class="nosort">Tarefa</th><th class="nosort">Clientes</th><th class="nosort">Recorrência</th><th class="nosort">Responsáveis</th><th class="nosort n">Checklist</th><th class="nosort">Situação</th></tr></thead>
       <tbody id="ctRows"></tbody>
     </table></div>
     <div class="foot"><span id="ctFoot"></span></div>
@@ -373,28 +373,23 @@
   <form id="rForm" autocomplete="off">
     <div class="dsec"><h5>Tarefa</h5>
       <div class="fg">
-        <label style="grid-column:1/-1">Nome da tarefa<input name="nome" required maxlength="200" placeholder="Ex.: Conciliar banco"></label>
+        <label style="grid-column:1/-1">Nome da tarefa<input name="nome" required maxlength="200" placeholder="Ex.: Conciliação bancária"></label>
         <label>Tipo<select name="tipo"><option value="diaria">Diária (seg a sex)</option><option value="semanal">Semanal</option><option value="quinzenal">Quinzenal (a cada 15 dias)</option><option value="mensal">Mensal</option><option value="anual">Anual</option></select></label>
-        <label data-so="semanal">Dia da semana<select name="diaSem"><option value="1">segunda</option><option value="2">terça</option><option value="3">quarta</option><option value="4">quinta</option><option value="5">sexta</option></select></label>
-        <label data-so="mensal anual">Dia da entrega<input type="number" name="dia" min="1" max="31"></label>
-        <label data-so="mensal">Dia da meta (opcional)<input type="number" name="meta" min="1" max="31" placeholder="pronto até"></label>
-        <label data-so="anual">Mês<select name="mes"><option value="1">janeiro</option><option value="2">fevereiro</option><option value="3">março</option><option value="4">abril</option><option value="5">maio</option><option value="6">junho</option><option value="7">julho</option><option value="8">agosto</option><option value="9">setembro</option><option value="10">outubro</option><option value="11">novembro</option><option value="12">dezembro</option></select></label>
-        <label data-so="quinzenal" style="grid-column:1/-1;font-size:12px;color:var(--ink3)">Gera a cada 15 dias contando da data "Vale a partir de". Se cair no fim de semana, vai para a segunda.</label>
         <label>Vale a partir de<input type="date" name="inicio" required></label>
+        <label data-so="quinzenal" style="grid-column:1/-1;font-size:12px;color:var(--ink3)">Gera a cada 15 dias contando de "Vale a partir de". Fim de semana e feriado vão para o dia útil mais próximo.</label>
         <label>Até (opcional)<input type="date" name="fim"></label>
       </div></div>
-    <div class="dsec" id="rCliSec"><h5>Clientes</h5><div class="fequipe" id="rClis"></div>
-      <div class="hint" id="rCliHint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Na criação dá para aplicar a vários clientes de uma vez: vira uma rotina por cliente.</div></div>
-    <div class="dsec"><h5>Responsáveis</h5><div class="fequipe" id="rResp"></div>
-      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Responsáveis = quem pode executar. Analista, supervisor, gestor e Adm podem executar qualquer uma.</div></div>
-    <div class="dsec"><h5>Checklist padrão</h5><ul class="dck" id="rCk"></ul>
+    <div class="dsec"><h5>Clientes</h5>
+      <div class="dadd" id="rTodos"><span style="font-size:12px;color:var(--ink2)">Para todos os marcados:</span><input name="todosDia" type="number" min="1" max="31" placeholder="dia" style="width:70px"><select name="todosResp"></select><button type="button" id="rAplicar">Aplicar</button></div>
+      <div id="rClis" style="overflow:auto"></div>
+      <div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Marque os clientes que recebem esta tarefa. Dia e responsável podem ser diferentes em cada um. Analista, supervisor, gestor e Adm podem executar qualquer tarefa.</div></div>
+    <div class="dsec"><h5>Checklist padrão (vale para todos os clientes)</h5><ul class="dck" id="rCk"></ul>
       <div class="dadd"><input id="rCkNovo" placeholder="+ item do checklist" maxlength="200"><button type="button" id="rCkAdd">Adicionar</button></div></div>
-    <div class="dsec"><label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" name="ativa"> Rotina ativa (gera tarefas)</label></div>
     <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="dbtn" type="submit" id="rSalvar">Salvar</button>
       <button class="dbtn sec" type="button" id="rCanc">Cancelar</button>
       <span class="sp" style="flex:1"></span>
-      <button class="dbtn perigo" type="button" id="rExcluir">Excluir rotina</button>
+      <button class="dbtn perigo" type="button" id="rExcluir">Excluir tarefa</button>
     </div>
   </form>
 </div>
