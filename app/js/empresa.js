@@ -298,12 +298,14 @@ export async function abrirCartao(id, msg) {
   const falta = itens.filter((i) => !i.marcado).length;
   const naEmpresa = E.rodando && E.rodando.empresa_id === t.empresa_id;
   let pe;
-  if (feita) pe = `<div class="hint" style="font-size:12px;color:var(--ink3)">Tarefa concluída.</div>`;
+  if (feita) pe = `<div class="hint" style="font-size:12px;color:var(--ink3)">Tarefa concluída.</div>${pc ? '<button class="dbtn sec" id="dReabrir" type="button" style="margin-top:8px">Reabrir tarefa</button>' : ""}`;
   else if (!pc) pe = `<div class="hint" style="font-size:12px;color:var(--ink3)">Você pode ver esta tarefa, mas só os responsáveis concluem.</div>`;
   else if (!naEmpresa) pe = `<button class="dbtn sec" id="dEntrar" type="button">Entrar em ${esc(t.empresa_nome)} para executar →</button>`;
   else pe = `<button class="dbtn" id="dConcluir" type="button" ${falta ? "disabled" : ""}>Concluir tarefa</button>${falta ? `<div class="hint" style="margin-top:6px;font-size:11.5px;color:var(--ink3)">Faltam ${falta} item(ns) do checklist.</div>` : ""}`;
   $("#dFoot").innerHTML = pe;
   if ($("#dConcluir")) $("#dConcluir").onclick = travar($("#dConcluir"), () => concluir(t));
+  if ($("#dReabrir")) $("#dReabrir").onclick = () => perguntar(`Reabrir "${t.titulo}"?`, "A tarefa volta para em aberto e o tempo dela é zerado. O checklist fica como está. Fica registrado no histórico.",
+    [{ txt: "Reabrir", cls: "pri", fn: async () => { await rpc("central_reabrir_tarefa", { p_tarefa: t.id }); toast("Tarefa reaberta"); await Promise.all([abrirCartao(t.id), recarregar()]); } }, { txt: "Voltar" }]);
   if ($("#dEntrar")) $("#dEntrar").onclick = () => { fecharCartao(); entrar(t.empresa_id).catch(avisoErro); };
 }
 
