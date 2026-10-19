@@ -473,3 +473,12 @@ body.app-off{display:block}
 #nLista li .nok{margin-top:4px;font-size:11.5px;color:var(--ok)}
 #nLista li.antiga{border-left:3px solid var(--warn);padding-left:6px}
 #nLista li.verificada{opacity:.75}
+
+/* tarefas → clientes */
+.cli-chip{display:inline-block;font-size:11.5px;padding:1px 7px;margin:1px 0;border-radius:10px;background:var(--line2);color:var(--ink2);white-space:nowrap}
+.vtab{width:100%;border-collapse:collapse;font-size:12.5px}
+.vtab th{text-align:left;font-size:11px;color:var(--ink3);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line)}
+.vtab td{padding:4px 6px;border-bottom:1px solid var(--line2);vertical-align:middle}
+.vtab tr.off td:not(:first-child){opacity:.4}
+.vtab input[type=number]{width:58px;font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+.vtab select{font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);max-width:170px}
