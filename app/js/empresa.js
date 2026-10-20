@@ -1,6 +1,7 @@
 // Tela do cliente: cronômetro, tarefas do dia, cartão da tarefa, senhas e anotações.
 import { sb, rpc, q } from "./api.js";
 import { E, pode, nomeDe, papelDe, cliente, segundosRodando } from "./estado.js";
+import * as Solic from "./solicitacoes.js";
 import { $, esc, hms, dmy, diaLongo, diaCurto, hhmm, somaDias, fimSemana, TIPO, COR_PAPEL, linkSeguro, toast, avisoErro, perguntar, copiar, travar } from "./ui.js";
 
 let app = null;                 // { ir(view, id) }
@@ -33,8 +34,9 @@ export function iniciar(a) {
   $("#nSalvar").onclick = travar($("#nSalvar"), async () => {
     const t = $("#nTxt").value.trim(); if (!t) return;
     const para = $("#nPara").value;
-    await rpc("central_anotar", { p_empresa: E.aberta, p_texto: t, p_para: para ? [para] : null });
-    $("#nTxt").value = ""; toast("Anotação salva"); await carregarAnotacoes();
+    // vira uma solicitação: a primeira linha é o assunto, o texto todo fica como detalhe
+    await rpc("central_abrir_chamado", { p_empresa: E.aberta, p_titulo: t.split("\n")[0].slice(0, 200), p_texto: t.includes("\n") || t.length > 200 ? t : null, p_responsavel: para || null });
+    $("#nTxt").value = ""; $("#nPara").value = ""; toast("Solicitação aberta"); await carregarAnotacoes();
   });
   iniciarCartao(); iniciarSenhas(); iniciarOrdem();
   setInterval(tique, 1000);
@@ -190,31 +192,18 @@ async function concluir(t) {
 }
 
 $("#nLista") && $("#nLista").addEventListener("click", (ev) => {
-  const b = ev.target.closest("[data-verificar]"); if (!b) return;
-  travar(b, async () => { await rpc("central_verificar_anotacao", { p_id: b.dataset.verificar }); toast("Anotação verificada"); await carregarAnotacoes(); })();
+  const li = ev.target.closest("[data-ch]"); if (li) Solic.abrir(li.dataset.ch).catch(avisoErro);
 });
 
-// hoje + as de dias anteriores que ninguém verificou ainda (até 30 dias)
+// solicitações em aberto deste cliente (abrir uma leva para a conversa)
 async function carregarAnotacoes() {
   if ($("#nPara").options.length === 1) {
     [...E.equipe.entries()].filter(([, x]) => x.ativo).sort((a, b) => a[1].nome.localeCompare(b[1].nome))
       .forEach(([u, x]) => $("#nPara").insertAdjacentHTML("beforeend", `<option value="${u}">${esc(x.nome)}</option>`));
   }
-  const campos = "id, usuario_id, texto, created_at, dia, para, origem, verificada_em, verificada_por, enviada_em";
-  const [deHoje, pendentes] = await Promise.all([
-    q(sb.from("central_anotacoes").select(campos).eq("empresa_id", E.aberta).eq("dia", E.hoje)),
-    q(sb.from("central_anotacoes").select(campos).eq("empresa_id", E.aberta).lt("dia", E.hoje).gte("dia", somaDias(E.hoje, -30)).is("verificada_em", null))
-  ]);
-  const notas = [...pendentes, ...deHoje].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  $("#nLista").innerHTML = notas.map((n) => {
-    const quando = n.dia === E.hoje ? hhmm(n.created_at) : `${dmy(n.dia)} ${hhmm(n.created_at)}`;
-    const para = (n.para || []).length ? ` · para ${n.para.map((u) => esc(nomeDe(u))).join(", ")}` : "";
-    const tags = [n.origem === "agente" ? '<span class="tag t-plain">agente</span>' : "", n.enviada_em ? '<span class="tag t-plain">foi no resumo</span>' : ""].join("");
-    const estado = n.verificada_em
-      ? `<div class="nok">✓ verificada por ${esc(nomeDe(n.verificada_por))} ${n.verificada_em.slice(0, 10) === E.hoje ? "às " + esc(hhmm(n.verificada_em)) : "em " + dmy(n.verificada_em.slice(0, 10))}</div>`
-      : `<button type="button" class="mb" data-verificar="${n.id}">marcar como verificada</button>`;
-    return `<li class="${n.verificada_em ? "verificada" : n.dia < E.hoje ? "antiga" : ""}"><small>${esc(quando)} · ${esc(nomeDe(n.usuario_id))}${para} ${tags}</small>${esc(n.texto)}${estado}</li>`;
-  }).join("") || '<li class="zero" style="font-size:12px">Nenhuma anotação hoje.</li>';
+  const chs = await Solic.doCliente(E.aberta);
+  $("#nLista").innerHTML = chs.map((c) => `<li data-ch="${c.id}"><small>${Solic.tagStatus(c.status)} ${c.responsavel ? "· " + esc(nomeDe(c.responsavel)) : ""}${c.prazo ? " · prazo " + dmy(c.prazo) : ""}</small>${esc(c.titulo)}</li>`).join("")
+    || '<li class="zero" style="font-size:12px">Nenhuma solicitação em aberto deste cliente.</li>';
 }
 
 

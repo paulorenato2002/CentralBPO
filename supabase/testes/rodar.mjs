@@ -349,5 +349,31 @@ checar("responsável reabre a tarefa concluída", ra.status === "pendente" && ra
 await erro("não reabre o que não está concluído", `select public.central_reabrir_tarefa('${tEmail}')`, "NAO_CONCLUIDA");
 checar("reabertura fica no histórico", (await val(`select count(*) from public.eventos_operacionais where descricao like 'reabriu a tarefa%'`)) >= 1);
 
+// ---------- 11. Solicitações (chamados) ----------
+console.log("\n11. Solicitações");
+await como(P.Ana);
+const ch = await val(`select public.central_abrir_chamado($1, 'Cliente mandou NF sem centro de custo', 'Ver com o gestor antes de lançar', $2)`, [E.Alfa, P.Bruna]);
+checar("abre solicitação com responsável", (await um(`select status, responsavel, criado_por from public.central_chamados where id = $1`, [ch])).status === "aberto");
+await erro("solicitação em cliente que não atende", `select public.central_abrir_chamado('${E.Beta}', 'x')`, "SEM_ACESSO_CLIENTE");
+await como(P.Bruna);
+await db.query(`select public.central_status_chamado($1, 'em_progresso')`, [ch]);
+await db.query(`select public.central_comentar_chamado($1, 'Pedi a NF corrigida no grupo')`, [ch]);
+await erro("impedimento exige motivo", `select public.central_status_chamado('${ch}', 'impedimento')`, "IMPEDIMENTO_SEM_MOTIVO");
+await db.query(`select public.central_status_chamado($1, 'impedimento', 'Cliente não respondeu')`, [ch]);
+await db.query(`select public.central_transferir_chamado($1, $2, 'Paulo cobra o cliente')`, [ch, P.Paulo]);
+await db.query(`select public.central_status_chamado($1, 'finalizado')`, [ch]);
+const evs = (await db.query(`select tipo, de, para from public.central_chamado_eventos where chamado_id = $1 order by created_at, id`, [ch])).rows;
+checar("conversa registra abertura, status, comentário, transferência", ["abriu", "status", "comentou", "status", "transferiu", "status"].every((t) => evs.some((e) => e.tipo === t)) && evs.length === 6, JSON.stringify(evs.map((e) => e.tipo)));
+const fin = await um(`select status, responsavel, finalizado_em is not null as f from public.central_chamados where id = $1`, [ch]);
+checar("finalizado com data e novo responsável", fin.status === "finalizado" && fin.f && fin.responsavel === P.Paulo, JSON.stringify(fin));
+checar("view traz cliente e comentários", (await um(`select empresa_codigo, comentarios from public.central_vw_chamados where id = $1`, [ch])).comentarios == 1);
+await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [P.Carlos]);
+await db.exec(`set role authenticated`);
+checar("RLS: quem vê o cliente lê a solicitação", (await val(`select count(*) from public.central_chamados where id = '${ch}'`)) == 1);
+await db.exec(`reset role`);
+await db.exec(`set role authenticated`);
+await erro("app não grava direto nos chamados", `update public.central_chamados set status = 'aberto'`, "permission denied");
+await db.exec(`reset role`);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);
