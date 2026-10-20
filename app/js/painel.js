@@ -82,6 +82,7 @@ export async function desenharHome() {
       .gte("concluida_em", inicioDia(somaDias(ini, -90))).lte("concluida_em", fimDia(fim)).order("concluida_em").order("titulo"))
   ]);
   if (meu !== pedidoHome) return;   // o filtro mudou no meio do caminho
+  desenharTempoPorCliente(ini, fim).catch(avisoErro);
   const vis = (t) => (!soMinhas || minha(t) || t.concluida_por === E.eu.id) && (!hTipos.size || hTipos.has(t.tipo_recorrencia));
   const porId = new Map([...doPeriodo, ...atrasadas].map((t) => [t.id, t]));
   const ts = [...porId.values()].filter(vis);
@@ -140,6 +141,22 @@ export async function desenharHome() {
       <div class="gbar"><i style="width:${(r.p / mx) * 100}%"></i>${r.h ? `<b style="left:${(r.h / mx) * 100}%"></b>` : ""}</div>
       <span class="gval">${mm(r.p)} ${tag}</span></div>`;
   }).join("") || '<div class="zero" style="padding:20px">Nenhuma tarefa concluída no período.</div>';
+}
+
+// tempo gasto por cliente no período: soma do cronômetro (todas as pessoas que a pessoa logada pode ver)
+async function desenharTempoPorCliente(ini, fim) {
+  const sess = await todas(() => sb.from("central_vw_sessoes").select("empresa_id, dia, tempo_ativo_segundos").gte("dia", ini).lte("dia", fim).order("id"));
+  const por = new Map();
+  sess.forEach((s) => { const x = por.get(s.empresa_id) || { seg: 0, dias: new Set() }; x.seg += Number(s.tempo_ativo_segundos || 0); x.dias.add(s.dia); por.set(s.empresa_id, x); });
+  const linhas = [...por.entries()].map(([id, x]) => ({ c: cliente(id), seg: x.seg, dias: x.dias.size })).filter((l) => l.seg > 0).sort((a, b) => b.seg - a.seg);
+  const total = linhas.reduce((a, l) => a + l.seg, 0), mx = Math.max(1, ...linhas.map((l) => l.seg)) * 1.05;
+  const h = (s) => { const m = Math.round(s / 60); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
+  $("#g3sub").textContent = total ? `· total ${h(total)}` : "";
+  $("#g3").innerHTML = linhas.map((l) => `<div class="gr" title="${esc(l.c.nome)}: ${h(l.seg)} em ${l.dias} dia(s)">
+      <span class="gn">${esc(l.c.codigo)} ${esc(l.c.nome)}</span>
+      <div class="gbar"><i style="width:${(l.seg / mx) * 100}%"></i></div>
+      <span class="gval">${h(l.seg)} <span class="gd">${h(l.seg / l.dias)}/dia</span></span></div>`).join("")
+    || '<div class="zero" style="padding:20px">Nenhum tempo registrado no cronômetro neste período.</div>';
 }
 
 /* ================= Calendário ================= */

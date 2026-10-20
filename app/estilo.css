@@ -28,6 +28,11 @@
     --warn:#d69a52; --warn-soft:#352a1b;
     --bad:#e07a63; --bad-soft:#3a221d;
 }
+/* controles nativos (data, lista, rolagem) seguem o tema escolhido */
+:root{color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark}}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 /* hidden sempre esconde, mesmo em elemento com display próprio (a tela de login ficava por cima do app) */
 [hidden]{display:none !important}
@@ -108,6 +113,7 @@ th.n{text-align:right}
 .t-ok{color:var(--ok);background:var(--ok-soft)}
 .t-warn{color:var(--warn);background:var(--warn-soft)}
 .t-bad{color:var(--bad);background:var(--bad-soft)}
+.t-acc{color:var(--accent);background:var(--accent-soft)}
 .t-plain{color:var(--ink2);border:1px solid var(--line)}
 .zero{color:var(--ink3)}
 .mini{display:flex;gap:2px;align-items:flex-end;height:16px}
@@ -482,3 +488,24 @@ body.app-off{display:block}
 .vtab tr.off td:not(:first-child){opacity:.4}
 .vtab input[type=number]{width:58px;font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
 .vtab select{font:inherit;padding:3px 5px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);max-width:170px}
+
+/* menu ocultável */
+.bmenu{font:inherit;font-size:18px;line-height:1;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:4px;padding:4px 9px;cursor:pointer}
+body.menu-oculto{grid-template-columns:0 1fr}
+body.menu-oculto aside{display:none}
+
+/* Solicitações */
+aside a .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:17px;text-align:center}
+#soRows tr{cursor:pointer}
+.conversa{list-style:none;margin:0;padding:0;max-height:46vh;overflow:auto}
+.conversa li{margin:6px 0;font-size:13px}
+.conversa li small{display:block;font-size:11px;color:var(--ink3);margin-bottom:2px}
+.conversa li.msg div{background:var(--line2);border-radius:8px;padding:7px 10px;white-space:pre-wrap;max-width:92%}
+.conversa li.msg.minha{text-align:right}
+.conversa li.msg.minha div{background:var(--accent-soft);display:inline-block;text-align:left}
+.conversa li.sis{font-size:12px;color:var(--ink2);border-left:2px solid var(--line);padding-left:8px}
+.conversa li.sis small{display:inline;margin-right:4px}
+.conversa .msg-ob{margin-top:3px;font-style:italic;white-space:pre-wrap}
+#chTexto{width:100%;font:inherit;font-size:13px;padding:7px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink)}
+#novoCh textarea{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);width:100%}
+#nLista li[data-ch]{cursor:pointer}

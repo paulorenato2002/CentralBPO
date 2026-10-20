@@ -50,6 +50,7 @@
   <a href="#" data-view="home">Home</a>
   <a href="#" data-view="clientes">Tarefas</a>
   <a href="#" data-view="agenda">Calendário</a>
+  <a href="#" data-view="solic">Solicitações <span class="badge" id="navSolic" hidden></span></a>
   <div class="grp">Cadastros</div>
   <a href="#" data-view="cadcli">Clientes</a>
   <a href="#" data-view="cadsen">Senhas</a>
@@ -68,6 +69,7 @@
 </aside>
 
 <header class="topbar" id="topo" hidden>
+  <button type="button" class="bmenu" id="bMenu" title="Ocultar o menu" aria-label="Ocultar ou mostrar o menu" aria-expanded="true">☰</button>
   <h1 id="titulo">Tarefas</h1>
   <span style="font-size:12.5px;color:var(--ink3)" id="hoje"></span>
   <span class="sp"></span>
@@ -128,6 +130,8 @@
       <div class="blk"><div class="blkhd">Tempo médio por tarefa · período × média histórica</div><div id="g2" class="g2"></div>
         <div class="gleg"><span><i class="lb"></i>média no período</span><span><i class="lt"></i>média histórica (90 dias antes)</span></div></div>
     </div>
+    <div class="blk" style="margin-top:14px"><div class="blkhd">Tempo gasto por cliente · período <span class="sub" id="g3sub"></span></div><div id="g3" class="g2"></div>
+      <div class="gleg"><span><i class="lb"></i>horas no período (cronômetro de todos)</span><span>· média por dia trabalhado</span></div></div>
   </section>
 
   <!-- ========== TAREFAS: lista de clientes ========== -->
@@ -177,11 +181,11 @@
         <div class="blk"><div class="blkhd">Resto da semana</div><div id="semana"></div></div>
       </div>
       <div class="notas">
-        <div class="blkhd">Anotações do dia</div>
+        <div class="blkhd">Solicitações deste cliente</div>
         <textarea id="nTxt" rows="4" maxlength="2000" placeholder="Ex.: notas com erro, repassar ao gestor do cliente"></textarea>
-        <label class="npara">Para <select id="nPara" aria-label="Para quem vai a anotação"><option value="">analistas do cliente</option></select></label>
-        <button id="nSalvar" type="button">Salvar anotação</button>
-        <p class="hint">Vai no resumo por e-mail. Fica na lista até alguém marcar como verificada.</p>
+        <label class="npara">Para <select id="nPara" aria-label="Para quem vai a solicitação"><option value="">escolha quem resolve…</option></select></label>
+        <button id="nSalvar" type="button">Abrir solicitação</button>
+        <p class="hint">Vira uma solicitação na aba Solicitações, com status e conversa. Abaixo, as que estão em aberto deste cliente.</p>
         <ul id="nLista"></ul>
       </div>
     </div>
@@ -231,9 +235,8 @@
         <thead><tr><th class="nosort">Cliente</th><th class="nosort">Acesso</th><th class="nosort">Usuário</th><th class="nosort">Senha</th><th class="nosort">Última troca</th><th class="nosort"></th></tr></thead>
         <tbody id="csRows" class="static"></tbody>
       </table></div>
-      <div class="blk"><div class="blkhd">Consultas recentes</div><ol class="feed cons" id="csCons" style="border:0"></ol></div>
     </div>
-    <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado. Alterar e excluir: só Adm (os demais viram pedido).</span></div>
+    <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado (veja em Histórico › Consultas). Alterar e excluir: só Adm (os demais viram pedido).</span></div>
   </section>
 
   <!-- ========== CADASTRO DE TAREFAS (rotinas) ========== -->
@@ -270,8 +273,26 @@
     <div class="foot"><span>Só o Adm cadastra colaborador, troca papel ou inativa; os demais consultam e pedem ao Adm.</span></div>
   </section>
 
+  <!-- ========== SOLICITAÇÕES ========== -->
+  <section class="view" id="v-solic">
+    <div class="bar">
+      <div class="seg" id="soSit"><button data-v="abertos" class="on" type="button">Em aberto</button><button data-v="fechados" type="button">Finalizadas</button><button data-v="todos" type="button">Todas</button></div>
+      <select id="soEmp" aria-label="Cliente"><option value="">Todos os clientes</option></select>
+      <select id="soResp" aria-label="Responsável"><option value="">Todos os responsáveis</option></select>
+      <span class="sp"></span>
+      <input type="search" id="soQ" placeholder="Buscar solicitação">
+      <button class="dbtn" id="soNovo" style="margin:0" type="button">+ Nova solicitação</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th class="nosort">Status</th><th class="nosort">Solicitação</th><th class="nosort">Cliente</th><th class="nosort">Responsável</th><th class="nosort">Prazo</th><th class="nosort">Última atividade</th></tr></thead>
+      <tbody id="soRows"></tbody>
+    </table></div>
+    <div class="foot"><span id="soCount"></span><span>Abra uma solicitação para alguém da equipe, acompanhe o status e converse dentro dela. Tudo fica registrado.</span></div>
+  </section>
+
   <!-- ========== HISTÓRICO ========== -->
   <section class="view" id="v-historico">
+    <div class="seg" id="hAba" style="margin-bottom:10px"><button data-v="atividade" class="on" type="button">Histórico de atividade</button><button data-v="consultas" type="button">Consultas a informações sigilosas</button></div>
     <div class="bar">
       <select id="hUser"><option value="">Todos os colaboradores</option></select>
       <select id="hEmp"><option value="">Todos os clientes</option></select>
@@ -423,24 +444,24 @@
 
 <!-- ========== ACESSO (cadastro de senha) ========== -->
 <div class="drawer" id="acessoF" hidden>
-  <div class="dhd"><div><div class="dnome" id="aTit"></div><div class="tmeta"><span class="criada" id="aSub"></span></div></div><button id="aFechar" title="Fechar" type="button">×</button></div>
-  <div class="dmsg" id="aMsg" hidden></div>
-  <form id="aForm" autocomplete="off">
+  <div class="dhd"><div><div class="dnome" id="acTit"></div><div class="tmeta"><span class="criada" id="acSub"></span></div></div><button id="acFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="acMsg" hidden></div>
+  <form id="acForm" autocomplete="off">
     <div class="dsec"><div class="fg">
-      <label style="grid-column:1/-1">Cliente<select name="empresa" id="aEmp" required></select></label>
+      <label style="grid-column:1/-1">Cliente<select name="empresa" id="acEmp" required></select></label>
       <label>Acesso<input name="sistema" required maxlength="200" placeholder="Ex.: Banco Itaú · empresas"></label>
       <label>Tipo<select name="tipo"><option value="banco">Banco</option><option value="plataforma">Plataforma</option><option value="email">E-mail</option><option value="governo">Governo</option><option value="outro">Outro</option></select></label>
       <label style="grid-column:1/-1">Link de acesso<input name="link" type="url" maxlength="500" placeholder="https://"></label>
       <label style="grid-column:1/-1">Usuário / login<input name="usuario" maxlength="200" autocomplete="off"></label>
       <label style="grid-column:1/-1">Senha
-        <span style="display:flex;gap:6px"><input name="senha" id="aSen" type="password" maxlength="500" autocomplete="new-password" style="flex:1"><button type="button" class="mb" id="aVer">mostrar</button><button type="button" class="mb" id="aGerar">gerar</button></span></label>
+        <span style="display:flex;gap:6px"><input name="senha" id="acSen" type="password" maxlength="500" autocomplete="new-password" style="flex:1"><button type="button" class="mb" id="acVer">mostrar</button><button type="button" class="mb" id="acGerar">gerar</button></span></label>
       <label style="grid-column:1/-1">Observações de acesso<textarea name="obs" rows="5" maxlength="4000" placeholder="Ex.: token com a Ana; dupla autenticação pelo celular do sócio; senha muda todo mês"></textarea></label>
     </div></div>
     <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="dbtn" type="submit" id="aSalvar">Salvar acesso</button>
-      <button class="dbtn sec" type="button" id="aCanc">Cancelar</button>
+      <button class="dbtn" type="submit" id="acSalvar">Salvar acesso</button>
+      <button class="dbtn sec" type="button" id="acCanc">Cancelar</button>
       <span class="sp" style="flex:1"></span>
-      <button class="dbtn perigo" type="button" id="aExcluir">Excluir acesso</button>
+      <button class="dbtn perigo" type="button" id="acExcluir">Excluir acesso</button>
     </div>
   </form>
 </div>
@@ -450,6 +471,36 @@
   <div class="dhd"><div><div class="dnome">Ordem das tarefas</div><div class="tmeta"><span class="criada" id="oEmp"></span><span class="criada">a lista do dia segue esta ordem, para todos</span></div></div><button id="oFechar" title="Fechar" type="button">×</button></div>
   <div class="dsec"><ol class="olista" id="oLista"></ol></div>
   <div class="dfoot" style="display:flex;gap:8px"><button class="dbtn" type="button" id="oSalvar">Salvar ordem</button><button class="dbtn sec" type="button" id="oCanc">Cancelar</button></div>
+</div>
+
+<!-- ========== SOLICITAÇÃO (conversa) ========== -->
+<div class="drawer largo" id="chamadoF" hidden>
+  <div class="dhd"><div><div class="dnome" id="chTit"></div><div class="tmeta" id="chSub"></div></div><button id="chFechar" title="Fechar" type="button">×</button></div>
+  <div class="dsec"><div class="fg" style="grid-template-columns:1fr 1fr 1fr">
+    <label>Status<select id="chStatus"></select></label>
+    <label>Responsável<select id="chResp"></select></label>
+    <label>Prazo<input type="date" id="chPrazo"></label>
+  </div><div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Para pôr em impedimento, escreva o motivo na mensagem antes de trocar o status.</div></div>
+  <div class="dsec"><h5>Andamento</h5><ol class="conversa" id="chConversa"></ol></div>
+  <form class="dsec" id="chForm" autocomplete="off">
+    <textarea id="chTexto" rows="3" maxlength="4000" placeholder="Escreva uma mensagem (fica no andamento e vale como motivo ao mudar status ou responsável)"></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="dbtn" type="submit" id="chEnviar" style="margin:0">Enviar mensagem</button></div>
+  </form>
+</div>
+
+<!-- ========== NOVA SOLICITAÇÃO ========== -->
+<div class="drawer" id="novoCh" hidden>
+  <div class="dhd"><div><div class="dnome">Nova solicitação</div><div class="tmeta"><span class="criada">Fica registrada; quem receber vê na aba Solicitações.</span></div></div><button id="nsFechar" title="Fechar" type="button">×</button></div>
+  <form id="nsForm" autocomplete="off">
+    <div class="dsec"><div class="fg" style="grid-template-columns:1fr">
+      <label>Cliente<select name="empresa"></select></label>
+      <label>Assunto<input name="titulo" required maxlength="200" placeholder="Ex.: NF chegou sem centro de custo"></label>
+      <label>Detalhes<textarea name="texto" rows="5" maxlength="4000" placeholder="O que precisa ser feito, onde está o documento, prazo do cliente…"></textarea></label>
+      <label>Para quem<select name="resp"></select></label>
+      <label>Prazo (opcional)<input type="date" name="prazo"></label>
+    </div></div>
+    <div class="dfoot" style="display:flex;gap:8px"><button class="dbtn" type="submit" id="nsSalvar">Abrir solicitação</button><button class="dbtn sec" type="button" id="nsCanc">Cancelar</button></div>
+  </form>
 </div>
 
 <!-- ========== TROCAR MINHA SENHA ========== -->

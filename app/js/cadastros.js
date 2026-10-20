@@ -152,11 +152,11 @@ function iniciarSenhas() {
   ["#csEmp", "#csVelhas"].forEach((s) => $(s).addEventListener("change", () => desenharSenhas(false).catch(avisoErro)));
   $("#csQ").addEventListener("input", () => desenharSenhas(false).catch(avisoErro));
   $("#csNovoAbrir").onclick = () => abrirAcesso(null);
-  $("#aFechar").onclick = $("#aCanc").onclick = () => fecharAcesso();
-  $("#aVer").onclick = () => { const e = $("#aSen"); e.type = e.type === "password" ? "text" : "password"; $("#aVer").textContent = e.type === "password" ? "mostrar" : "ocultar"; };
-  $("#aGerar").onclick = () => { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%", n = new Uint32Array(16); crypto.getRandomValues(n); $("#aSen").value = Array.from(n, (x) => c[x % c.length]).join(""); $("#aSen").type = "text"; $("#aVer").textContent = "ocultar"; };
-  $("#aForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#aSalvar"), salvarAcesso)(); };
-  $("#aExcluir").onclick = () => { if (acessoAlt) acaoAcesso(acessoAlt, "exc").catch(avisoErro); };
+  $("#acFechar").onclick = $("#acCanc").onclick = () => fecharAcesso();
+  $("#acVer").onclick = () => { const e = $("#acSen"); e.type = e.type === "password" ? "text" : "password"; $("#acVer").textContent = e.type === "password" ? "mostrar" : "ocultar"; };
+  $("#acGerar").onclick = () => { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%", n = new Uint32Array(16); crypto.getRandomValues(n); $("#acSen").value = Array.from(n, (x) => c[x % c.length]).join(""); $("#acSen").type = "text"; $("#acVer").textContent = "ocultar"; };
+  $("#acForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#acSalvar"), salvarAcesso)(); };
+  $("#acExcluir").onclick = () => { if (acessoAlt) acaoAcesso(acessoAlt, "exc").catch(avisoErro); };
   $("#csRows").addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-act]"); if (!el) return;
     const a = acessos.find((x) => x.id === el.closest("[data-acc]").dataset.acc); if (!a) return;
@@ -166,13 +166,13 @@ function iniciarSenhas() {
 
 async function acaoAcesso(a, act) {
   if (act === "link") return rpc("central_registrar_acesso", { p_acesso: a.id, p_acao: "abriu o link" });
-  if (act === "cu") { await copiar(a.usuario_login || ""); await rpc("central_registrar_acesso", { p_acesso: a.id, p_acao: "copiou o usuário" }); return carregarConsultas(); }
-  if (act === "cs") { const s = await rpc("central_revelar_senha", { p_acesso: a.id, p_motivo: "copiou" }); await copiar(s || ""); return carregarConsultas(); }
+  if (act === "cu") { await copiar(a.usuario_login || ""); await rpc("central_registrar_acesso", { p_acesso: a.id, p_acao: "copiou o usuário" }); return; }
+  if (act === "cs") { const s = await rpc("central_revelar_senha", { p_acesso: a.id, p_motivo: "copiou" }); await copiar(s || ""); return; }
   if (act === "ver") {
     if (visiveis.has(a.id)) { visiveis.delete(a.id); return desenharSenhas(false); }
     visiveis.set(a.id, await rpc("central_revelar_senha", { p_acesso: a.id, p_motivo: "visualizou" }));
     setTimeout(() => { if (visiveis.delete(a.id)) desenharSenhas(false); }, 30000);   // some sozinha em 30 s
-    await desenharSenhas(false); return carregarConsultas();
+    return desenharSenhas(false);
   }
   if (act === "sol") { const r = await rpc("central_salvar_acesso", { p_id: a.id, p_empresa: a.empresa_id, p_sistema: a.sistema, p_tipo: null, p_link: null, p_usuario: null, p_senha: null, p_observacoes: null }); return avisoGravacao(r, ""); }
   if (act === "alt") return abrirAcesso(a);
@@ -188,7 +188,6 @@ export async function desenharSenhas(recarregar = true) {
   }
   if (recarregar) {
     acessos = await todas(() => sb.from("central_acessos").select("id, empresa_id, sistema, tipo, link, usuario_login, observacoes, alterada_em, alterada_por").eq("ativo", true).order("id"));
-    carregarConsultas().catch(avisoErro);
   }
   $("#csNovoAbrir").textContent = permite("senha_cadastrar") ? "+ Novo acesso" : "+ Novo acesso (vira pedido)";
   const fe = $("#csEmp").value, busca = $("#csQ").value.trim().toLowerCase(), velhas = $("#csVelhas").checked, alt = permite("senha_alterar");
@@ -208,29 +207,29 @@ export async function desenharSenhas(recarregar = true) {
   }).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum acesso com esse filtro</td></tr>';
 }
 
-function fecharAcesso() { $("#acessoF").hidden = true; $("#aForm").reset(); acessoAlt = null; }
+function fecharAcesso() { $("#acessoF").hidden = true; $("#acForm").reset(); acessoAlt = null; }
 function abrirAcesso(a) {
   acessoAlt = a; app.fecharOutras(); fechar();
-  const novo = !a, f = $("#aForm").elements;
-  $("#aTit").textContent = novo ? "Novo acesso" : a.sistema;
-  $("#aSub").textContent = novo ? "A senha fica cifrada no banco. Cada consulta fica registrada." : `${cliente(a.empresa_id).nome} · alterado em ${dmy(a.alterada_em.slice(0, 10))} por ${nomeDe(a.alterada_por)}`;
-  $("#aEmp").innerHTML = E.clientes.map((c) => `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`).join("");
+  const novo = !a, f = $("#acForm").elements;
+  $("#acTit").textContent = novo ? "Novo acesso" : a.sistema;
+  $("#acSub").textContent = novo ? "A senha fica cifrada no banco. Cada consulta fica registrada." : `${cliente(a.empresa_id).nome} · alterado em ${dmy(a.alterada_em.slice(0, 10))} por ${nomeDe(a.alterada_por)}`;
+  $("#acEmp").innerHTML = E.clientes.map((c) => `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`).join("");
   f.empresa.value = novo ? ($("#csEmp").value || (E.clientes[0] || {}).id || "") : a.empresa_id; f.empresa.disabled = !novo;
   f.sistema.value = novo ? "" : a.sistema; f.tipo.value = novo ? "banco" : a.tipo;
   f.link.value = novo ? "" : a.link || ""; f.usuario.value = novo ? "" : a.usuario_login || "";
-  f.senha.value = ""; f.senha.type = "password"; $("#aVer").textContent = "mostrar";
+  f.senha.value = ""; f.senha.type = "password"; $("#acVer").textContent = "mostrar";
   f.senha.placeholder = novo ? "" : "deixe em branco para manter a atual";
   f.obs.value = novo ? "" : a.observacoes || "";
-  $("#aExcluir").hidden = novo || !permite("senha_alterar");
-  $("#aSalvar").textContent = novo ? "Salvar acesso" : permite("senha_alterar") ? "Salvar alteração" : "Pedir alteração ao Adm";
-  msg("#aMsg", "");
+  $("#acExcluir").hidden = novo || !permite("senha_alterar");
+  $("#acSalvar").textContent = novo ? "Salvar acesso" : permite("senha_alterar") ? "Salvar alteração" : "Pedir alteração ao Adm";
+  msg("#acMsg", "");
   $("#acessoF").hidden = false; f.sistema.focus();
 }
 async function salvarAcesso() {
-  const f = $("#aForm").elements, a = acessoAlt;
+  const f = $("#acForm").elements, a = acessoAlt;
   const link = f.link.value.trim();
-  if (link && !linkSeguro(link)) return msg("#aMsg", "O link precisa começar com https:// ou http://");
-  if (!f.sistema.value.trim()) return msg("#aMsg", "Dê um nome ao acesso (ex.: Banco Itaú, Prefeitura).");
+  if (link && !linkSeguro(link)) return msg("#acMsg", "O link precisa começar com https:// ou http://");
+  if (!f.sistema.value.trim()) return msg("#acMsg", "Dê um nome ao acesso (ex.: Banco Itaú, Prefeitura).");
   const r = await rpc("central_salvar_acesso", { p_id: a ? a.id : null, p_empresa: a ? a.empresa_id : f.empresa.value, p_sistema: f.sistema.value.trim(), p_tipo: f.tipo.value,
     p_link: link, p_usuario: f.usuario.value.trim(), p_senha: f.senha.value || null, p_observacoes: f.obs.value.trim() });
   if (a) visiveis.delete(a.id);
@@ -238,12 +237,6 @@ async function salvarAcesso() {
   fecharAcesso(); await desenharSenhas();
 }
 
-async function carregarConsultas() {
-  const regs = await q(sb.from("central_vw_historico").select("created_at, usuario_nome, empresa_nome, descricao")
-    .or("descricao.ilike.*senha*,descricao.ilike.*acesso*,descricao.ilike.*link*,descricao.ilike.*usuário*").order("created_at", { ascending: false }).limit(12));
-  $("#csCons").innerHTML = regs.map((r) => `<li><small>${dmy(r.created_at.slice(0, 10))} ${esc(hhmm(r.created_at))} · ${esc(r.usuario_nome || "")} · ${esc(r.empresa_nome || "")}</small>${esc(r.descricao)}</li>`).join("")
-    || '<li class="vazio">Nenhuma consulta ainda.</li>';
-}
 
 /* ======================= TAREFAS (uma tarefa → os clientes vinculados) =======================
    Cada tarefa (nome, tipo, checklist) vale para os clientes marcados nela. Por cliente variam o dia,

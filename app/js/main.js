@@ -5,6 +5,7 @@ import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from 
 import * as Emp from "./empresa.js";
 import * as Painel from "./painel.js";
 import * as Cad from "./cadastros.js";
+import * as Solic from "./solicitacoes.js";
 
 /* ================= tema e tamanho do texto (preferência deste navegador) ================= */
 function preferencia(chave, padrao) { try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; } }
@@ -18,6 +19,14 @@ function aplicarZoom(z) {
   document.querySelectorAll("#fonte button").forEach((b) => b.classList.toggle("on", b.dataset.z === String(z))); guardar("central-zoom", z);
 }
 aplicarTema(preferencia("central-tema", "")); aplicarZoom(preferencia("central-zoom", "1.15"));
+// menu lateral ocultável (lembra neste navegador)
+function aplicarMenu(oculto) {
+  document.body.classList.toggle("menu-oculto", oculto);
+  $("#bMenu").setAttribute("aria-expanded", String(!oculto)); $("#bMenu").title = oculto ? "Mostrar o menu" : "Ocultar o menu";
+  guardar("central-menu", oculto ? "oculto" : "");
+}
+aplicarMenu(preferencia("central-menu", "") === "oculto");
+$("#bMenu").onclick = () => aplicarMenu(!document.body.classList.contains("menu-oculto"));
 $("#tema").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) aplicarTema(b.dataset.t); });
 $("#fonte").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) aplicarZoom(b.dataset.z); });
 
@@ -37,10 +46,10 @@ function mostrar(qual, texto) {
 }
 
 const TITULOS = { home: "Home", clientes: "Tarefas", agenda: "Calendário", historico: "Histórico de atividade",
-  cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores" };
+  solic: "Solicitações", cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores" };
 async function ir(view, id) {
   if (view !== "empresa") { Emp.fecharCartao(); Emp.fecharSenhas(); }
-  Cad.fechar(); $("#minhaSenha").hidden = true;
+  Cad.fechar(); Solic.fechar(); $("#minhaSenha").hidden = true;
   E.view = view; if (id) E.aberta = id;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + view));
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
@@ -51,6 +60,7 @@ async function ir(view, id) {
     if (view === "clientes") await desenharClientes();
     if (view === "empresa") await Emp.carregar();
     if (view === "historico") await desenharHistorico();
+    if (view === "solic") await Solic.desenhar();
     if (view === "cadcli") await Cad.desenharClientes();
     if (view === "cadsen") await Cad.desenharSenhas();
     if (view === "cadtar") await Cad.desenharRotinas();
@@ -153,7 +163,14 @@ $("#fSenha").onsubmit = (ev) => { ev.preventDefault(); travar($("#msSalvar"), as
 
 async function abrirApp() {
   mostrar("carregando");
-  const { data: { user } } = await sb.auth.getUser();
+  // sessão antiga guardada no navegador pode travar a renovação: em 10 s sem resposta, limpa e volta ao login
+  const espera = new Promise((ok) => setTimeout(() => ok("tempo"), 10000));
+  const resp = await Promise.race([sb.auth.getUser().catch(() => ({ data: {} })), espera]);
+  if (resp === "tempo") {
+    try { localStorage.removeItem("central-bpo-sessao"); } catch { /* sem armazenamento */ }
+    mostrar("login"); $("#lErro").textContent = "Sua sessão anterior expirou. Entre de novo."; return;
+  }
+  const user = resp && resp.data && resp.data.user;
   if (!user) return mostrar("login");
   E.hoje = hojeISO();
   const eu = await q(sb.from("central_colaboradores").select("usuario_id, papel_central, ativo").eq("usuario_id", user.id).maybeSingle()).catch((e) => { avisoErro(e); return null; });
@@ -169,6 +186,7 @@ async function abrirApp() {
   $("#eu").textContent = E.eu.nome; $("#papel").textContent = PAPEL[E.eu.papel] || E.eu.papel;
   $("#hoje").textContent = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   mostrar("app");
+  Solic.desenhar().catch(() => {});   // contador "comigo" no menu
   await Emp.carregarSessoes();
   ir(E.rodando ? "empresa" : "home", E.rodando ? E.rodando.empresa_id : null);
 }
@@ -234,6 +252,10 @@ async function desenharClientes() {
 
 /* ================= histórico ================= */
 ["#hUser", "#hEmp", "#hData"].forEach((s) => $(s).addEventListener("change", () => desenharHistorico().catch(avisoErro)));
+let hAba = "atividade";
+const CONSULTA = "descricao.ilike.*senha*,descricao.ilike.*acesso*,descricao.ilike.*link*,descricao.ilike.*copiou o usuário*";
+$("#hAba").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (!b) return; hAba = b.dataset.v;
+  document.querySelectorAll("#hAba button").forEach((x) => x.classList.toggle("on", x === b)); desenharHistorico().catch(avisoErro); });
 async function desenharHistorico() {
   if ($("#hUser").options.length === 1) {
     [...E.equipe.entries()].forEach(([u, x]) => $("#hUser").insertAdjacentHTML("beforeend", `<option value="${u}">${esc(x.nome)}</option>`));
@@ -241,6 +263,8 @@ async function desenharHistorico() {
   }
   let cons = sb.from("central_vw_historico").select("id, created_at, usuario_id, usuario_nome, empresa_id, empresa_codigo, empresa_nome, descricao, tempo_ativo_segundos")
     .order("created_at", { ascending: false }).limit(300);
+  if (hAba === "consultas") cons = cons.or(CONSULTA);
+  else cons = cons.not("descricao", "ilike", "*senha*").not("descricao", "ilike", "*acesso ·*").not("descricao", "ilike", "abriu o link*").not("descricao", "ilike", "copiou o usuário*");
   if ($("#hUser").value) cons = cons.eq("usuario_id", $("#hUser").value);
   if ($("#hEmp").value) cons = cons.eq("empresa_id", $("#hEmp").value);
   if ($("#hData").value) { const d = $("#hData").value; cons = cons.gte("created_at", `${d}T00:00:00-03:00`).lte("created_at", `${d}T23:59:59.999-03:00`); }
@@ -257,6 +281,7 @@ async function desenharHistorico() {
 // redesenha a tela atual sem fechar o cartão (usado depois de mexer numa tarefa pelo cartão)
 const atualizar = () => (E.view === "home" ? Painel.desenharHome() : E.view === "agenda" ? Painel.desenharAgenda() : E.view === "clientes" ? desenharClientes() : Promise.resolve()).catch(avisoErro);
 Emp.iniciar({ ir, atualizar });
+Solic.iniciar({ fecharOutras: () => { Emp.fecharCartao(); Emp.fecharSenhas(); Cad.fechar(); }, depoisDeAbrir: () => (E.view === "empresa" ? Emp.carregar() : null) });
 Cad.iniciar({ recarregarBase: () => Promise.all([carregarClientes(), carregarEquipe()]), fecharOutras: () => { Emp.fecharCartao(); Emp.fecharSenhas(); } });
 Painel.iniciar({ entrar: (id) => Emp.entrar(id).catch(avisoErro), abrirCartao: (id) => Emp.abrirCartao(id).catch(avisoErro) });
 sb.auth.onAuthStateChange((evento) => { if (evento === "SIGNED_OUT") mostrar("login"); });
