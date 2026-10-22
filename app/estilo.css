@@ -491,8 +491,11 @@ body.app-off{display:block}
 
 /* menu ocultável */
 .bmenu{font:inherit;font-size:18px;line-height:1;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:4px;padding:4px 9px;cursor:pointer}
-body.menu-oculto{grid-template-columns:0 1fr}
+/* menu oculto: uma coluna só; cabeçalho e conteúdo presos no lugar (sem isso a grade empurrava o cabeçalho para uma coluna de largura zero) */
+body.menu-oculto{grid-template-columns:minmax(0,1fr)}
 body.menu-oculto aside{display:none}
+body.menu-oculto #topo{grid-column:1;grid-row:1}
+body.menu-oculto #principal{grid-column:1;grid-row:2}
 
 /* Solicitações */
 aside a .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:17px;text-align:center}
