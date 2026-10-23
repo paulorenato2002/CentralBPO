@@ -349,6 +349,11 @@ checar("responsável reabre a tarefa concluída", ra.status === "pendente" && ra
 await erro("não reabre o que não está concluído", `select public.central_reabrir_tarefa('${tEmail}')`, "NAO_CONCLUIDA");
 checar("reabertura fica no histórico", (await val(`select count(*) from public.eventos_operacionais where descricao like 'reabriu a tarefa%'`)) >= 1);
 
+// ---------- 10b. um cronômetro rodando por pessoa ----------
+await db.exec(`reset role`);
+const sDupla = await val(`select count(*) from public.central_sessoes group by usuario_id, estado having estado = 'rodando' order by 1 desc limit 1`).catch(() => 0);
+await erro("banco recusa 2 cronômetros rodando para a mesma pessoa", `insert into public.central_sessoes (usuario_id, empresa_id, dia, estado, ultima_atividade) select usuario_id, '${E.Beta}', dia + 1, 'rodando', now() from public.central_sessoes where estado = 'rodando' limit 1`, sDupla ? "central_sessoes_uma_rodando" : "");
+
 // ---------- 11. Solicitações (chamados) ----------
 console.log("\n11. Solicitações");
 await como(P.Ana);
