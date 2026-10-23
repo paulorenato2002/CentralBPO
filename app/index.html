@@ -227,19 +227,14 @@
   <!-- ========== CADASTRO DE SENHAS (todos os clientes) ========== -->
   <section class="view" id="v-cadsen">
     <div class="bar">
-      <select id="csEmp"><option value="">Todos os clientes</option></select>
+      <select id="csEmp" hidden aria-hidden="true"><option value="">Todos os clientes</option></select>
       <div class="chips" id="csTipos"></div>
       <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="csVelhas"> sem troca há mais de 180 dias</label>
       <span class="sp"></span>
       <input type="search" id="csQ" placeholder="Buscar sistema, usuário, observação">
       <button class="dbtn" id="csNovoAbrir" style="margin:0" type="button">+ Novo acesso</button>
     </div>
-    <div class="cols" style="grid-template-columns:minmax(0,1fr)">
-      <div class="tbl"><table>
-        <thead><tr><th class="nosort">Cliente</th><th class="nosort">Acesso</th><th class="nosort">Usuário</th><th class="nosort">Senha</th><th class="nosort">Última troca</th><th class="nosort"></th></tr></thead>
-        <tbody id="csRows" class="static"></tbody>
-      </table></div>
-    </div>
+    <div id="csArea"></div>
     <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado (veja em Histórico › Consultas). Alterar e excluir: só Adm (os demais viram pedido).</span></div>
   </section>
 

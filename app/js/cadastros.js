@@ -157,7 +157,9 @@ function iniciarSenhas() {
   $("#acGerar").onclick = () => { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%", n = new Uint32Array(16); crypto.getRandomValues(n); $("#acSen").value = Array.from(n, (x) => c[x % c.length]).join(""); $("#acSen").type = "text"; $("#acVer").textContent = "ocultar"; };
   $("#acForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#acSalvar"), salvarAcesso)(); };
   $("#acExcluir").onclick = () => { if (acessoAlt) acaoAcesso(acessoAlt, "exc").catch(avisoErro); };
-  $("#csRows").addEventListener("click", (ev) => {
+  $("#csArea").addEventListener("click", (ev) => {
+    const cli = ev.target.closest("[data-cli]"); if (cli) { $("#csEmp").value = cli.dataset.cli; $("#csQ").value = ""; return desenharSenhas(false).catch(avisoErro); }
+    if (ev.target.closest("[data-voltar]")) { $("#csEmp").value = ""; return desenharSenhas(false).catch(avisoErro); }
     const el = ev.target.closest("[data-act]"); if (!el) return;
     const a = acessos.find((x) => x.id === el.closest("[data-acc]").dataset.acc); if (!a) return;
     acaoAcesso(a, el.dataset.act).catch(avisoErro);
@@ -192,19 +194,38 @@ export async function desenharSenhas(recarregar = true) {
   $("#csNovoAbrir").textContent = permite("senha_cadastrar") ? "+ Novo acesso" : "+ Novo acesso (vira pedido)";
   const fe = $("#csEmp").value, busca = $("#csQ").value.trim().toLowerCase(), velhas = $("#csVelhas").checked, alt = permite("senha_alterar");
   const dias = (a) => Math.floor((Date.now() - new Date(a.alterada_em).getTime()) / 864e5);
-  const lista = acessos.filter((a) => (!fe || a.empresa_id === fe) && (!csTipos.size || csTipos.has(a.tipo)) && (!velhas || dias(a) > VELHA) &&
-      (!busca || `${a.sistema} ${a.usuario_login || ""} ${a.observacoes || ""} ${cliente(a.empresa_id).nome}`.toLowerCase().includes(busca)))
-    .sort((x, y) => String(cliente(x.empresa_id).codigo).localeCompare(String(cliente(y.empresa_id).codigo)) || x.tipo.localeCompare(y.tipo) || x.sistema.localeCompare(y.sistema));
-  $("#csRows").innerHTML = lista.map((a) => {
-    const link = linkSeguro(a.link), sen = visiveis.get(a.id), c = cliente(a.empresa_id), d = dias(a);
-    return `<tr data-acc="${a.id}">
-    <td class="emp"><b>${esc(c.nome)}</b><small>${esc(c.codigo)}</small></td>
-    <td><span class="tipo">${esc(STIPO[a.tipo] || a.tipo)}</span> ${esc(a.sistema)}${link ? ` <a class="mb lk" href="${esc(link)}" target="_blank" rel="noopener noreferrer" data-act="link">abrir ↗</a>` : ""}${a.observacoes ? `<div class="zero" style="font-size:11.5px;white-space:normal;max-width:280px">${esc(a.observacoes)}</div>` : ""}</td>
-    <td>${a.usuario_login ? `<code>${esc(a.usuario_login)}</code><button class="mb" type="button" data-act="cu">copiar</button>` : '<span class="zero">—</span>'}</td>
-    <td>${sen !== undefined ? `<pre class="sen">${esc(sen ?? "(sem senha)")}</pre>` : "<code>••••••••</code>"}<button class="mb" type="button" data-act="ver">${sen !== undefined ? "ocultar" : "mostrar"}</button><button class="mb" type="button" data-act="cs">copiar</button></td>
-    <td class="${d > VELHA ? "velha" : "zero"}" title="por ${esc(nomeDe(a.alterada_por))}">${dmy(a.alterada_em.slice(0, 10))}<div style="font-size:11px;font-weight:400">${d} dias</div></td>
-    <td>${alt ? '<button class="mb" type="button" data-act="alt">alterar</button><button class="mb" type="button" data-act="exc">excluir</button>' : '<button class="mb" type="button" data-act="sol">solicitar alteração</button>'}</td></tr>`;
-  }).join("") || '<tr><td colspan="6" class="zero" style="text-align:center;padding:20px">Nenhum acesso com esse filtro</td></tr>';
+  const passa = (a) => (!csTipos.size || csTipos.has(a.tipo)) && (!velhas || dias(a) > VELHA) &&
+    (!busca || `${a.sistema} ${a.usuario_login || ""} ${a.observacoes || ""} ${cliente(a.empresa_id).nome}`.toLowerCase().includes(busca));
+  if (!fe) {   // grade de clientes: um quadro por cliente
+    const grupos = E.clientes.map((c) => { const todos = acessos.filter((a) => a.empresa_id === c.id); return { c, todos, vis: todos.filter(passa) }; })
+      .filter((g) => !(busca || csTipos.size || velhas) || g.vis.length);
+    $("#csArea").innerHTML = `<div class="sgrade">${grupos.map(({ c, todos, vis }) => {
+      const porTipo = Object.keys(STIPO).map((tp) => [tp, vis.filter((a) => a.tipo === tp).length]).filter(([, n]) => n);
+      const velhasN = todos.filter((a) => dias(a) > VELHA).length;
+      return `<button type="button" class="scli" data-cli="${c.id}">
+        <span class="scod">${esc(c.codigo)}</span><b>${esc(c.nome)}</b>
+        <span class="sn">${vis.length} acesso${vis.length === 1 ? "" : "s"}${vis.length !== todos.length ? ` de ${todos.length}` : ""}</span>
+        <span class="stipos">${porTipo.map(([tp, n]) => `<span class="tipo">${STIPO[tp]} ${n}</span>`).join(" ") || '<span class="zero">nenhum acesso</span>'}</span>
+        ${velhasN ? `<span class="velha" style="font-size:11.5px">${velhasN} sem troca há +180 dias</span>` : ""}</button>`;
+    }).join("") || '<div class="zero" style="padding:20px">Nenhum cliente com esse filtro.</div>'}</div>`;
+    return;
+  }
+  // quadro do cliente: colunas por tipo, um cartão por acesso
+  const c = cliente(fe), vis = acessos.filter((a) => a.empresa_id === fe && passa(a)).sort((x, y) => x.sistema.localeCompare(y.sistema));
+  const cartao = (a) => {
+    const link = linkSeguro(a.link), sen = visiveis.get(a.id), d = dias(a);
+    return `<div class="scard" data-acc="${a.id}">
+      <div class="st"><b>${esc(a.sistema)}</b>${link ? ` <a class="mb lk" href="${esc(link)}" target="_blank" rel="noopener noreferrer" data-act="link">abrir ↗</a>` : ""}</div>
+      <div class="sl"><span>Usuário</span>${a.usuario_login ? `<code>${esc(a.usuario_login)}</code><button class="mb" type="button" data-act="cu">copiar</button>` : '<span class="zero">—</span>'}</div>
+      <div class="sl"><span>Senha</span>${sen !== undefined ? `<pre class="sen">${esc(sen ?? "(sem senha)")}</pre>` : "<code>••••••••</code>"}<button class="mb" type="button" data-act="ver">${sen !== undefined ? "ocultar" : "mostrar"}</button><button class="mb" type="button" data-act="cs">copiar</button></div>
+      ${a.observacoes ? `<div class="so">${esc(a.observacoes)}</div>` : ""}
+      <div class="sr"><span class="${d > VELHA ? "velha" : "zero"}" title="por ${esc(nomeDe(a.alterada_por))}">trocada ${dmy(a.alterada_em.slice(0, 10))}</span>
+        <span>${alt ? '<button class="mb" type="button" data-act="alt">alterar</button><button class="mb" type="button" data-act="exc">excluir</button>' : '<button class="mb" type="button" data-act="sol">pedir alteração</button>'}</span></div></div>`;
+  };
+  const colunas = Object.entries(STIPO).map(([tp, nome]) => [nome, vis.filter((a) => a.tipo === tp)]).filter(([, l]) => l.length);
+  $("#csArea").innerHTML = `<div class="shd"><button type="button" class="mb" data-voltar>← Todos os clientes</button><b>${esc(c.codigo)} · ${esc(c.nome)}</b><span class="zero">${vis.length} acesso${vis.length === 1 ? "" : "s"}</span></div>
+    <div class="squadro">${colunas.map(([nome, l]) => `<div class="scol"><div class="scolhd">${nome} <span class="zero">${l.length}</span></div>${l.map(cartao).join("")}</div>`).join("")
+      || '<div class="zero" style="padding:20px">Nenhum acesso com esse filtro. Use "+ Novo acesso" para cadastrar.</div>'}</div>`;
 }
 
 function fecharAcesso() { $("#acessoF").hidden = true; $("#acForm").reset(); acessoAlt = null; }
