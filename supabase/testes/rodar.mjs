@@ -380,5 +380,24 @@ await db.exec(`set role authenticated`);
 await erro("app não grava direto nos chamados", `update public.central_chamados set status = 'aberto'`, "permission denied");
 await db.exec(`reset role`);
 
+// ---------- 12. aviso por e-mail ----------
+console.log("\n12. Aviso por e-mail (conteúdo)");
+await como(P.Ana);
+const ch2 = await val(`select public.central_abrir_chamado($1, 'Conferir <b>boleto</b> & NF', null, $2)`, [E.Alfa, P.Bruna]);
+await db.query(`select public.central_status_chamado($1, 'impedimento', 'Aguardando cliente')`, [ch2]);
+const avB = await um(`select * from public.central_notificacao_conteudo($1)`, [P.Bruna]);
+checar("aviso da Bruna traz a solicitação em impedimento", avB.itens >= 1 && avB.html.includes("Em impedimento (1)") && avB.assunto.includes("1 em impedimento"), avB.assunto);
+checar("aviso escapa HTML do título", avB.html.includes("&lt;b&gt;boleto&lt;/b&gt; &amp; NF") && !avB.html.includes("<b>boleto"));
+checar("aviso não leva o texto da conversa", !avB.html.includes("Aguardando cliente"));
+const avP = await um(`select * from public.central_notificacao_conteudo($1, now() - interval '1 hour')`, [P.Paulo]);
+checar("aviso do Paulo lista a finalizada desde o último aviso", avP.html.includes("Encerradas desde o último aviso (1)"));
+const avP2 = await um(`select * from public.central_notificacao_conteudo($1, now() + interval '1 hour')`, [P.Paulo]);
+checar("finalizada antiga não aparece de novo", !avP2.html.includes("Encerradas"));
+await erro("envio sem configuração no Vault", `select public.central_enviar_notificacoes('teste')`, "NOTIFICACAO_SEM_CONFIG");
+await db.exec(`set role authenticated`);
+await erro("app não chama o envio", `select public.central_enviar_notificacoes('teste')`, "permission denied");
+await erro("app não lê o conteúdo de outra pessoa", `select * from public.central_notificacao_conteudo('${P.Bruna}')`, "permission denied");
+await db.exec(`reset role`);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);
