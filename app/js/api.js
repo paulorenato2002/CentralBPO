@@ -76,6 +76,7 @@ export function traduzir(e) {
   const codigo = m ? m[1] : null;
   if (codigo && MENSAGENS[codigo]) return new ErroCentral(codigo, MENSAGENS[codigo]);
   if (/jwt|token|expired|not authenticated/i.test(msg)) return new ErroCentral("SESSAO", "Sua sessão expirou. Entre de novo.");
+  if (/central_sessoes_uma_rodando/.test(msg)) return new ErroCentral("OUTRO_CLIENTE_RODANDO", MENSAGENS.OUTRO_CLIENTE_RODANDO);
   if (/duplicate key|already exists/i.test(msg)) return new ErroCentral("DUPLICADO", "Já existe um cadastro com esse código ou CNPJ.");
   if (/permission denied/i.test(msg)) return new ErroCentral("SEM_PERMISSAO", MENSAGENS.SEM_PERMISSAO);
   if (/fetch|network|failed to/i.test(msg)) return new ErroCentral("REDE", "Sem conexão com o servidor. Confira a internet e tente de novo.");

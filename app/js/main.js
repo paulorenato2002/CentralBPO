@@ -27,6 +27,9 @@ function aplicarMenu(oculto) {
 }
 aplicarMenu(preferencia("central-menu", "") === "oculto");
 $("#bMenu").onclick = () => aplicarMenu(!document.body.classList.contains("menu-oculto"));
+// grupos do menu (Cadastros, Outras informações) recolhem; lembra neste navegador
+function grupo(bt, aberto) { bt.setAttribute("aria-expanded", String(aberto)); $("#" + bt.getAttribute("aria-controls")).hidden = !aberto; guardar("central-grp-" + bt.dataset.grp, aberto ? "" : "fechado"); }
+document.querySelectorAll(".grp-bt").forEach((bt) => { grupo(bt, preferencia("central-grp-" + bt.dataset.grp, "") !== "fechado"); bt.onclick = () => grupo(bt, bt.getAttribute("aria-expanded") !== "true"); });
 $("#tema").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) aplicarTema(b.dataset.t); });
 $("#fonte").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (b) aplicarZoom(b.dataset.z); });
 
@@ -53,6 +56,8 @@ async function ir(view, id) {
   E.view = view; if (id) E.aberta = id;
   document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + view));
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
+  const ativo = document.querySelector("aside a.on"), sub = ativo && ativo.closest(".sub");   // abre o grupo da aba atual
+  if (sub && sub.hidden) document.querySelector(`[aria-controls="${sub.id}"]`).click();
   $("#titulo").textContent = view === "empresa" ? "Tarefas / " + cliente(E.aberta).nome : TITULOS[view] || "";
   try {
     if (view === "home") await Painel.desenharHome();
