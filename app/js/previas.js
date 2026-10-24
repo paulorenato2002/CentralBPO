@@ -96,40 +96,14 @@ async function inicio() {
 }
 
 /* ---------------- Institucional ---------------- */
+// O mapa da empresa (HTML original) roda numa moldura própria (app/mapa.html), lido do banco: o conteúdo não fica no código público.
+let temaLigado = false;
 async function institucional() {
-  const [ct, rots] = await Promise.all([lerConteudo(), todas(() => sb.from("central_vw_rotinas").select("empresa_id, nome, frequencia, responsaveis, situacao").order("id"))]);
-  const ativas = rots.filter((r) => r.situacao === "ativa");
-  const papelDe = (id) => ((ct.pessoas || []).find((p) => p.usuario_id === id) || {});
-  const equipe = equipeAtiva().map((p) => ({ ...p, ...papelDe(p.id) }));
-  const niveis = ct.niveis && ct.niveis.length ? ct.niveis : [{ t: "Equipe", d: "" }];
-  const nivelDe = (p) => (Number.isInteger(p.nivel) ? Math.min(p.nivel, niveis.length - 1) : niveis.length - 1);
-  const organo = niveis.map((n, i) => {
-    const ps = equipe.filter((p) => nivelDe(p) === i);
-    return ps.length ? `<div class="inv"><div class="invhd"><b>${esc(n.t)}</b><small>${esc(n.d || "")}</small></div>
-      <div class="invps">${ps.map((p) => `<div class="inp">${avatar(p.id, p.nome, "g")}<b>${esc(p.nome)}</b><small>${esc(p.papel_txt || PAPEL[p.papel] || "")}</small></div>`).join("")}</div></div>` : "";
-  }).filter(Boolean).join('<div class="inseta" aria-hidden="true">↓</div>');
-  const ciclo = (ct.ciclo || []).map((c, i) => `<li><i>${i + 1}</i><b>${esc(c.t)}</b><small>${esc(c.x)}</small></li>`).join("");
-  const subDe = (codigo) => ((ct.clientes || []).find((c) => String(c.codigo) === String(codigo)) || {}).sub || "";
-  const clientes = E.clientes.map((c) => {
-    const rs = ativas.filter((r) => r.empresa_id === c.id), quem = [...new Set(rs.flatMap((r) => r.responsaveis || []))];
-    const n = (f) => rs.filter((r) => r.frequencia === f).length;
-    return `<div class="icli">${logo(c.id, c.nome)}<div><b>${esc(c.nome)}</b><small>${esc(subDe(c.codigo) || c.codigo)}</small>
-      <div class="icn"><span>${n("diaria")} diárias</span><span>${n("semanal")} semanais</span><span>${n("mensal") + n("quinzenal") + n("anual")} mensais+</span></div>
-      <div class="iqm">${quem.map((u) => avatar(u, (E.equipe.get(u) || {}).nome || "", "p")).join("")}</div></div></div>`;
-  }).join("");
-  const mapaTipo = ct.tarefas_tipo || {};
-  const tipos = (ct.tipos || []).map((t) => {
-    const ts = [...new Set(ativas.filter((r) => mapaTipo[r.nome] === t.id).map((r) => r.nome))];
-    return `<div class="itp"><b>${esc(t.t)}</b><p>${esc(t.d)}</p>${ts.length ? `<ul>${ts.slice(0, 6).map((n) => `<li>${esc(n)}</li>`).join("")}${ts.length > 6 ? `<li class="zero">+${ts.length - 6}</li>` : ""}</ul>` : ""}</div>`;
-  }).join("");
-  const parceiros = [...E.imgs.keys()].filter((k) => k.startsWith("parceiro:"));
-  return `<div class="ihero">${imagem("parceiro:effective") ? `<img src="${imagem("parceiro:effective")}" alt="Effective">` : ""}
-      <div><h2>${esc(ct.titulo || "Como a Effective trabalha")}</h2><p>${esc(ct.intro || "Quem é quem, como o cliente entra e anda com a gente, e o que fazemos por ele todo dia.")}</p></div></div>
-    <div class="blk"><div class="blkhd">Quem é quem</div><div class="iorg">${organo}</div></div>
-    ${ciclo ? `<div class="blk" style="margin-top:14px"><div class="blkhd">Como o cliente anda com a gente</div><ol class="iciclo">${ciclo}</ol></div>` : ""}
-    <div class="blk" style="margin-top:14px"><div class="blkhd">Nossos clientes ${real}</div><div class="iclis">${clientes}</div></div>
-    ${tipos ? `<div class="blk" style="margin-top:14px"><div class="blkhd">Tudo o que fazemos, por assunto ${real}</div><div class="itps">${tipos}</div></div>` : ""}
-    ${parceiros.filter((k) => k !== "parceiro:effective").length ? `<div class="blk" style="margin-top:14px"><div class="blkhd">Parceiros</div><div class="iparc">${parceiros.filter((k) => k !== "parceiro:effective").map((k) => `<img src="${imagem(k)}" alt="${esc(k.slice(9))}">`).join("")}</div></div>` : ""}`;
+  if (!temaLigado) {   // trocou o tema da Central: o mapa recarrega no tema novo
+    temaLigado = true;
+    $("#tema").addEventListener("click", () => setTimeout(() => { const f = $("#mapaFr"); if (f && E.view === "institucional") f.contentWindow.location.reload(); }, 50));
+  }
+  return '<iframe id="mapaFr" class="mapafr" src="./mapa.html" title="Mapa da Effective: quem é quem e como trabalhamos"></iframe>';
 }
 
 /* ---------------- Comercial · carteira ---------------- */

@@ -9,8 +9,9 @@ const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PORTA = Number(process.env.PORT) || 4173;
 const TIPOS = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 const vercel = JSON.parse(await readFile(join(RAIZ, "vercel.json"), "utf8"));
-const csp = vercel.headers[0].headers.find((h) => h.key === "Content-Security-Policy").value
+const cspDe = (i) => vercel.headers[i].headers.find((h) => h.key === "Content-Security-Policy").value
   .replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:54321 ws://127.0.0.1:54321");   // Supabase local
+const csp = cspDe(0), cspMapa = cspDe(1);   // /app/mapa.html tem regra própria (pode ficar dentro da Central)
 
 // variáveis do .env.local (as funções de /api leem process.env, como na Vercel)
 try {
@@ -40,8 +41,8 @@ createServer(async (req, res) => {
   if (!arquivo.startsWith(RAIZ) || /node_modules|\.env/.test(arquivo)) { res.writeHead(403); return res.end(); }
   try {
     await stat(arquivo);
-    res.writeHead(200, { "Content-Type": TIPOS[extname(arquivo)] || "application/octet-stream", "Content-Security-Policy": csp,
-      "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY", "Cache-Control": "no-store" });
+    res.writeHead(200, { "Content-Type": TIPOS[extname(arquivo)] || "application/octet-stream", "Content-Security-Policy": caminho === "/app/mapa.html" ? cspMapa : csp,
+      "X-Content-Type-Options": "nosniff", "X-Frame-Options": caminho === "/app/mapa.html" ? "SAMEORIGIN" : "DENY", "Cache-Control": "no-store" });
     res.end(await readFile(arquivo));
   } catch { res.writeHead(404); res.end("não encontrado"); }
 }).listen(PORTA, "127.0.0.1", () => console.log(`Central BPO local: http://127.0.0.1:${PORTA}/app/`));
