@@ -47,20 +47,32 @@
 <!-- ================= APP ================= -->
 <aside id="lateral" hidden>
   <div class="brand"><img class="brand-ico" data-marca="icone" alt="" hidden><div>Central BPO<small id="marca">Operação</small></div></div>
-  <a href="#" data-view="home">Home</a>
-  <a href="#" data-view="clientes">Tarefas</a>
-  <a href="#" data-view="agenda">Calendário</a>
-  <a href="#" data-view="solic">Solicitações <span class="badge" id="navSolic" hidden></span></a>
-  <button type="button" class="grp grp-bt" data-grp="cad" aria-expanded="true" aria-controls="grp-cad">Cadastros <span class="seta" aria-hidden="true">▾</span></button>
-  <div class="sub" id="grp-cad">
-    <a href="#" data-view="cadcli">Clientes</a>
-    <a href="#" data-view="cadsen">Senhas</a>
-    <a href="#" data-view="cadtar">Tarefas</a>
-    <a href="#" data-view="cadcol">Colaboradores</a>
+  <a href="#" data-view="inicio" class="topo-sec">Início <span class="pv" title="Prévia: como vai ficar">prévia</span></a>
+  <button type="button" class="grp grp-bt" data-grp="com" aria-expanded="true" aria-controls="grp-com">Comercial · prévia <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-com">
+    <a href="#" data-view="carteira">Carteira</a>
+    <a href="#" data-view="precos">Preços e contratos</a>
+    <a href="#" data-view="vendas">Vendas</a>
   </div>
-  <button type="button" class="grp grp-bt" data-grp="outras" aria-expanded="true" aria-controls="grp-outras">Outras informações <span class="seta" aria-hidden="true">▾</span></button>
-  <div class="sub" id="grp-outras">
+  <a href="#" data-view="onboarding" class="topo-sec">Onboarding <span class="pv">prévia</span></a>
+  <button type="button" class="grp grp-bt" data-grp="op" aria-expanded="true" aria-controls="grp-op">Operação <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-op">
+    <a href="#" data-view="home">Painel do dia</a>
+    <a href="#" data-view="clientes">Tarefas</a>
+    <a href="#" data-view="agenda">Calendário</a>
+    <a href="#" data-view="solic">Solicitações <span class="badge" id="navSolic" hidden></span></a>
     <a href="#" data-view="historico">Histórico</a>
+    <button type="button" class="grp grp-bt grp2" data-grp="cad" aria-expanded="true" aria-controls="grp-cad">Cadastros <span class="seta" aria-hidden="true">▾</span></button>
+    <div class="sub" id="grp-cad">
+      <a href="#" data-view="cadcli">Clientes</a>
+      <a href="#" data-view="cadsen">Senhas</a>
+      <a href="#" data-view="cadtar">Tarefas</a>
+    </div>
+  </div>
+  <button type="button" class="grp grp-bt" data-grp="cfg" aria-expanded="true" aria-controls="grp-cfg">Configurações <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-cfg">
+    <a href="#" data-view="cadcol">Colaboradores</a>
+    <a href="#" data-view="perfis">Perfis</a>
   </div>
   <div class="me">
     <div id="eu" style="font-size:13px;color:var(--side-act)"></div>
@@ -105,6 +117,11 @@
 
 <main id="principal" hidden>
   <!-- ========== HOME: análise do fluxo de entrega ========== -->
+  <section class="view" id="v-previa">
+    <div class="pvfaixa">Prévia de como esta parte vai ficar. Os números vêm do banco quando dá; o resto é ilustrativo e ainda não grava nada.</div>
+    <div id="pvConteudo"></div>
+  </section>
+
   <section class="view" id="v-home">
     <div class="counts" id="tCounts"></div>
     <div class="bar">
