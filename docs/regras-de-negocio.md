@@ -250,3 +250,9 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - Carteira: quadrante honorário × horas do cronômetro (média mensal dos últimos 90 dias); sem dados suficientes mostra clientes de exemplo.
 - Onboarding: 7 etapas da largada à chegada; hoje o banco só confirma cadastro, acessos e rotinas.
 - Gráficos do Painel do dia: com período de um dia só (ex.: "Hoje"), os três gráficos usam os 10 dias úteis até o dia, para nunca ficarem vazios.
+
+## Informações, Datas e Contatos (24/10/2026)
+- Três abas em Cadastros, mesma tabela `central_notas_cliente` (tipo `info`, `data`, `contato`). Cliente vazio = geral da Effective (todos veem).
+- Quem atende o cliente lê, cria e edita; excluir só esconde e fica no histórico (`central_salvar_nota`, `central_excluir_nota`).
+- Datas: obrigatório informar o dia; "repete todo mês" mostra a próxima ocorrência. Lista em ordem do que vem primeiro; hoje/amanhã em vermelho, próximos 7 dias em laranja.
+- Contatos: telefone abre o WhatsApp; e-mail abre o programa de e-mail; os dois têm botão copiar.

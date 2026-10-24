@@ -414,5 +414,30 @@ checar("aberta recebe o novo responsável", respAb.length === 1 && respAb[0] ===
 const ckAb = (await db.query(`select texto, marcado from public.central_tarefa_checklist where tarefa_id = $1 order by ordem`, [tAb])).rows;
 checar("aberta recebe o novo checklist, na ordem nova, e mantém o item marcado", JSON.stringify(ckAb) === JSON.stringify([{ texto: "Item C", marcado: false }, { texto: "Item A", marcado: true }]), JSON.stringify(ckAb));
 
+// ---------- 14. Informações, datas e contatos ----------
+console.log("\n14. Informações, datas e contatos");
+await como(P.Ana);
+const nt1 = await val(`select public.central_salvar_nota(null, $1, 'contato', 'Fulana', 'Responsável pelo financeiro', null, '{"telefone":"61 99999-0000"}')`, [E.Alfa]);
+const nt2 = await val(`select public.central_salvar_nota(null, null, 'data', 'Fechamento do cartão', null, '2026-10-12', '{"repete":"mensal"}')`);
+checar("salva contato do cliente e data geral", !!nt1 && !!nt2);
+await erro("data sem dia", `select public.central_salvar_nota(null, null, 'data', 'x')`, "DATA_OBRIGATORIA");
+await erro("nota em cliente que não vê", `select public.central_salvar_nota(null, '${E.Beta}', 'info', 'x')`, "SEM_ACESSO_CLIENTE");
+await db.query(`select public.central_salvar_nota($1, $2, 'contato', 'Fulana de Tal', null, null, '{}')`, [nt1, E.Alfa]);
+checar("altera a nota", (await val(`select titulo from public.central_notas_cliente where id = $1`, [nt1])) === "Fulana de Tal");
+await db.exec(`set role authenticated`);
+checar("RLS: quem vê o cliente lê a nota", (await val(`select count(*) from public.central_notas_cliente where id = '${nt1}'`)) == 1);
+await erro("app não grava direto nas notas", `update public.central_notas_cliente set titulo = 'x'`, "permission denied");
+await db.exec(`reset role`);
+await como(P.Bruna);
+const nt3 = await val(`select public.central_salvar_nota(null, $1, 'info', 'Inscrição municipal', '123', null, '{}')`, [E.Beta]);
+await como(P.Ana);
+await db.exec(`set role authenticated`);
+checar("RLS: quem não vê o cliente não lê; a geral todos leem", (await val(`select count(*) from public.central_notas_cliente where id in ('${nt3}', '${nt2}')`)) == 1);
+await db.exec(`reset role`);
+await db.query(`select public.central_excluir_nota($1)`, [nt1]);
+await db.exec(`set role authenticated`);
+checar("excluída some da lista", (await val(`select count(*) from public.central_notas_cliente where id = '${nt1}'`)) == 0);
+await db.exec(`reset role`);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

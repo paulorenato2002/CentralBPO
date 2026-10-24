@@ -67,6 +67,9 @@
       <a href="#" data-view="cadcli">Clientes</a>
       <a href="#" data-view="cadsen">Senhas</a>
       <a href="#" data-view="cadtar">Tarefas</a>
+      <a href="#" data-view="cadinfo">Informações</a>
+      <a href="#" data-view="caddatas">Datas e lembretes</a>
+      <a href="#" data-view="cadcont">Contatos</a>
     </div>
   </div>
   <button type="button" class="grp grp-bt" data-grp="cfg" aria-expanded="true" aria-controls="grp-cfg">Configurações <span class="seta" aria-hidden="true">▾</span></button>
@@ -253,6 +256,18 @@
     </div>
     <div id="csArea"></div>
     <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado (veja em Histórico › Consultas). Alterar e excluir: só Adm (os demais viram pedido).</span></div>
+  </section>
+
+  <!-- ========== INFORMAÇÕES / DATAS / CONTATOS ========== -->
+  <section class="view" id="v-notas">
+    <div class="bar">
+      <select id="ntEmp" aria-label="Cliente"></select>
+      <span class="sp"></span>
+      <input type="search" id="ntQ" placeholder="Buscar…">
+      <button class="dbtn" id="ntNovo" style="margin:0" type="button">+ Novo</button>
+    </div>
+    <div id="ntArea"></div>
+    <div class="foot"><span>Por cliente ou geral da Effective. Quem atende o cliente vê e edita; tudo fica registrado no histórico.</span></div>
   </section>
 
   <!-- ========== CADASTRO DE TAREFAS (rotinas) ========== -->
@@ -478,6 +493,30 @@
       <button class="dbtn sec" type="button" id="acCanc">Cancelar</button>
       <span class="sp" style="flex:1"></span>
       <button class="dbtn perigo" type="button" id="acExcluir">Excluir acesso</button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== INFORMAÇÃO / DATA / CONTATO ========== -->
+<div class="drawer" id="notaF" hidden>
+  <div class="dhd"><div><div class="dnome" id="ntTit"></div></div><button id="ntFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="ntMsg" hidden></div>
+  <form id="ntForm" autocomplete="off">
+    <div class="dsec"><div class="fg">
+      <label style="grid-column:1/-1">Cliente<select name="empresa" id="ntFEmp"></select></label>
+      <label style="grid-column:1/-1" id="ntRotTit">Título<input name="titulo" required maxlength="200"></label>
+      <label data-so="contato">Cargo / função<input name="cargo" maxlength="120" placeholder="Ex.: sócia, financeiro"></label>
+      <label data-so="contato">Telefone / WhatsApp<input name="telefone" maxlength="40" inputmode="tel"></label>
+      <label data-so="contato" style="grid-column:1/-1">E-mail<input name="email" type="email" maxlength="200"></label>
+      <label data-so="data">Data<input name="data" type="date"></label>
+      <label data-so="data" style="display:flex;gap:6px;align-items:center;align-self:end"><input type="checkbox" name="repete"> repete todo mês</label>
+      <label style="grid-column:1/-1">Detalhes<textarea name="texto" rows="5" maxlength="4000" placeholder="Ex.: inscrição municipal, observação, como falar com a pessoa"></textarea></label>
+    </div></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit">Salvar</button>
+      <button class="dbtn sec" type="button" id="ntCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="ntExcluir">Excluir</button>
     </div>
   </form>
 </div>

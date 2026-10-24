@@ -1,5 +1,6 @@
 // Entrada do app: login, contexto da pessoa, navegação, lista de clientes e histórico.
 import * as Prev from "./previas.js";
+import * as Notas from "./notas.js";
 import { sb, q, rpc, retornoDoLink } from "./api.js";
 import { E, cliente, nomeDe, segundosRodando } from "./estado.js";
 import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from "./ui.js";
@@ -50,12 +51,13 @@ function mostrar(qual, texto) {
 }
 
 const TITULOS = { clientes: "Tarefas", agenda: "Calendário", historico: "Histórico de atividade",
-  solic: "Solicitações", cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores e permissões", home: "Painel do dia", ...Prev.VIEWS };
+  solic: "Solicitações", cadcli: "Cadastro de clientes", cadsen: "Senhas e acessos", cadtar: "Cadastro de tarefas", cadcol: "Colaboradores e permissões", home: "Painel do dia", ...Prev.VIEWS,
+  ...Object.fromEntries(Object.entries(Notas.VIEWS).map(([k, v]) => [k, v[1]])) };
 async function ir(view, id) {
   if (view !== "empresa") { Emp.fecharCartao(); Emp.fecharSenhas(); }
-  Cad.fechar(); Solic.fechar(); $("#minhaSenha").hidden = true;
+  Cad.fechar(); Solic.fechar(); Notas.fechar(); $("#minhaSenha").hidden = true;
   E.view = view; if (id) E.aberta = id;
-  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + (Prev.eh(view) ? "previa" : view)));
+  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === "v-" + (Prev.eh(view) ? "previa" : Notas.eh(view) ? "notas" : view)));
   document.querySelectorAll("aside a[data-view]").forEach((a) => a.classList.toggle("on", a.dataset.view === (view === "empresa" ? "clientes" : view)));
   // abre o grupo (e os grupos de fora) da aba atual
   for (let sub = (document.querySelector("aside a.on") || document.body).closest(".sub"); sub; sub = sub.parentElement.closest(".sub"))
@@ -73,6 +75,7 @@ async function ir(view, id) {
     if (view === "cadtar") await Cad.desenharRotinas();
     if (view === "cadcol") await Cad.desenharColaboradores();
     if (Prev.eh(view)) await Prev.desenhar(view);
+    if (Notas.eh(view)) await Notas.desenhar(view);
   } catch (e) { avisoErro(e); }
   Emp.topo();
 }
