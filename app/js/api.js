@@ -15,6 +15,7 @@ export const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
 });
 
 const MENSAGENS = {
+  DATA_OBRIGATORIA: "Informe a data.", NOTA_INVALIDA: "Esse cartão não existe mais ou é de um cliente que você não atende.",
   SEM_ACESSO: "Seu usuário não tem acesso ativo à Central. Fale com o administrador.",
   SEM_ACESSO_CLIENTE: "Você não atende este cliente.",
   DIA_FECHADO: "O registro de hoje já foi fechado (22h). Amanhã o cronômetro volta do zero.",

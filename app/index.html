@@ -47,20 +47,35 @@
 <!-- ================= APP ================= -->
 <aside id="lateral" hidden>
   <div class="brand"><img class="brand-ico" data-marca="icone" alt="" hidden><div>Central BPO<small id="marca">Operação</small></div></div>
-  <a href="#" data-view="home">Home</a>
-  <a href="#" data-view="clientes">Tarefas</a>
-  <a href="#" data-view="agenda">Calendário</a>
-  <a href="#" data-view="solic">Solicitações <span class="badge" id="navSolic" hidden></span></a>
-  <button type="button" class="grp grp-bt" data-grp="cad" aria-expanded="true" aria-controls="grp-cad">Cadastros <span class="seta" aria-hidden="true">▾</span></button>
-  <div class="sub" id="grp-cad">
-    <a href="#" data-view="cadcli">Clientes</a>
-    <a href="#" data-view="cadsen">Senhas</a>
-    <a href="#" data-view="cadtar">Tarefas</a>
-    <a href="#" data-view="cadcol">Colaboradores</a>
+  <a href="#" data-view="inicio" class="topo-sec">Início <span class="pv" title="Prévia: como vai ficar">prévia</span></a>
+  <button type="button" class="grp grp-bt" data-grp="com" aria-expanded="true" aria-controls="grp-com">Comercial · prévia <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-com">
+    <a href="#" data-view="carteira">Carteira</a>
+    <a href="#" data-view="precos">Preços e contratos</a>
+    <a href="#" data-view="vendas">Vendas</a>
   </div>
-  <button type="button" class="grp grp-bt" data-grp="outras" aria-expanded="true" aria-controls="grp-outras">Outras informações <span class="seta" aria-hidden="true">▾</span></button>
-  <div class="sub" id="grp-outras">
+  <a href="#" data-view="onboarding" class="topo-sec">Onboarding <span class="pv">prévia</span></a>
+  <button type="button" class="grp grp-bt" data-grp="op" aria-expanded="true" aria-controls="grp-op">Operação <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-op">
+    <a href="#" data-view="home">Painel do dia</a>
+    <a href="#" data-view="clientes">Tarefas</a>
+    <a href="#" data-view="agenda">Calendário</a>
+    <a href="#" data-view="solic">Solicitações <span class="badge" id="navSolic" hidden></span></a>
     <a href="#" data-view="historico">Histórico</a>
+    <button type="button" class="grp grp-bt grp2" data-grp="cad" aria-expanded="true" aria-controls="grp-cad">Cadastros <span class="seta" aria-hidden="true">▾</span></button>
+    <div class="sub" id="grp-cad">
+      <a href="#" data-view="cadcli">Clientes</a>
+      <a href="#" data-view="cadsen">Senhas</a>
+      <a href="#" data-view="cadtar">Tarefas</a>
+      <a href="#" data-view="cadinfo">Informações</a>
+      <a href="#" data-view="caddatas">Datas e lembretes</a>
+      <a href="#" data-view="cadcont">Contatos</a>
+    </div>
+  </div>
+  <button type="button" class="grp grp-bt" data-grp="cfg" aria-expanded="true" aria-controls="grp-cfg">Configurações <span class="seta" aria-hidden="true">▾</span></button>
+  <div class="sub" id="grp-cfg">
+    <a href="#" data-view="cadcol">Colaboradores</a>
+    <a href="#" data-view="perfis">Perfis</a>
   </div>
   <div class="me">
     <div id="eu" style="font-size:13px;color:var(--side-act)"></div>
@@ -105,6 +120,11 @@
 
 <main id="principal" hidden>
   <!-- ========== HOME: análise do fluxo de entrega ========== -->
+  <section class="view" id="v-previa">
+    <div class="pvfaixa">Prévia de como esta parte vai ficar. Os números vêm do banco quando dá; o resto é ilustrativo e ainda não grava nada.</div>
+    <div id="pvConteudo"></div>
+  </section>
+
   <section class="view" id="v-home">
     <div class="counts" id="tCounts"></div>
     <div class="bar">
@@ -131,7 +151,7 @@
     <div class="graf">
       <div class="blk"><div class="blkhd">Entregas por dia <span class="sub" id="g1sub"></span></div><div id="g1" class="g1"></div>
         <div class="gleg"><span><i class="lp"></i>previstas</span><span><i class="lc"></i>concluídas</span></div></div>
-      <div class="blk"><div class="blkhd">Tempo médio por tarefa · período × média histórica</div><div id="g2" class="g2"></div>
+      <div class="blk"><div class="blkhd">Tempo médio por tarefa · período × média histórica <span class="sub" id="g2sub"></span></div><div id="g2" class="g2"></div>
         <div class="gleg"><span><i class="lb"></i>média no período</span><span><i class="lt"></i>média histórica (90 dias antes)</span></div></div>
     </div>
     <div class="blk" style="margin-top:14px"><div class="blkhd">Tempo gasto por cliente · período <span class="sub" id="g3sub"></span></div><div id="g3" class="g2"></div>
@@ -236,6 +256,18 @@
     </div>
     <div id="csArea"></div>
     <div class="foot"><span>Consulta livre; cada visualização, cópia e link aberto fica registrado (veja em Histórico › Consultas). Alterar e excluir: só Adm (os demais viram pedido).</span></div>
+  </section>
+
+  <!-- ========== INFORMAÇÕES / DATAS / CONTATOS ========== -->
+  <section class="view" id="v-notas">
+    <div class="bar">
+      <select id="ntEmp" aria-label="Cliente"></select>
+      <span class="sp"></span>
+      <input type="search" id="ntQ" placeholder="Buscar…">
+      <button class="dbtn" id="ntNovo" style="margin:0" type="button">+ Novo</button>
+    </div>
+    <div id="ntArea"></div>
+    <div class="foot"><span>Por cliente ou geral da Effective. Quem atende o cliente vê e edita; tudo fica registrado no histórico.</span></div>
   </section>
 
   <!-- ========== CADASTRO DE TAREFAS (rotinas) ========== -->
@@ -461,6 +493,30 @@
       <button class="dbtn sec" type="button" id="acCanc">Cancelar</button>
       <span class="sp" style="flex:1"></span>
       <button class="dbtn perigo" type="button" id="acExcluir">Excluir acesso</button>
+    </div>
+  </form>
+</div>
+
+<!-- ========== INFORMAÇÃO / DATA / CONTATO ========== -->
+<div class="drawer" id="notaF" hidden>
+  <div class="dhd"><div><div class="dnome" id="ntTit"></div></div><button id="ntFechar" title="Fechar" type="button">×</button></div>
+  <div class="dmsg" id="ntMsg" hidden></div>
+  <form id="ntForm" autocomplete="off">
+    <div class="dsec"><div class="fg">
+      <label style="grid-column:1/-1">Cliente<select name="empresa" id="ntFEmp"></select></label>
+      <label style="grid-column:1/-1" id="ntRotTit">Título<input name="titulo" required maxlength="200"></label>
+      <label data-so="contato">Cargo / função<input name="cargo" maxlength="120" placeholder="Ex.: sócia, financeiro"></label>
+      <label data-so="contato">Telefone / WhatsApp<input name="telefone" maxlength="40" inputmode="tel"></label>
+      <label data-so="contato" style="grid-column:1/-1">E-mail<input name="email" type="email" maxlength="200"></label>
+      <label data-so="data">Data<input name="data" type="date"></label>
+      <label data-so="data" style="display:flex;gap:6px;align-items:center;align-self:end"><input type="checkbox" name="repete"> repete todo mês</label>
+      <label style="grid-column:1/-1">Detalhes<textarea name="texto" rows="5" maxlength="4000" placeholder="Ex.: inscrição municipal, observação, como falar com a pessoa"></textarea></label>
+    </div></div>
+    <div class="dfoot" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="dbtn" type="submit">Salvar</button>
+      <button class="dbtn sec" type="button" id="ntCanc">Cancelar</button>
+      <span class="sp" style="flex:1"></span>
+      <button class="dbtn perigo" type="button" id="ntExcluir">Excluir</button>
     </div>
   </form>
 </div>

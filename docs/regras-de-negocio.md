@@ -202,7 +202,7 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - As tarefas do dia a dia, o calendário e a previsão dos meses futuros saem **das rotinas**. O checklist de cada tarefa nasce do checklist padrão da rotina.
 - **Só o Adm** cria, altera, pausa e exclui. Os demais consultam tudo e têm "Pedir rotina nova / Pedir alteração ao Adm" (registrado).
 - Rotina nova pode ser aplicada a **vários clientes de uma vez** (vira uma rotina por cliente).
-- **Mudança vale a partir de amanhã:** as tarefas futuras ainda não concluídas são refeitas; as de hoje e as já concluídas não mudam.
+- **Mudança de responsável e checklist vale já (24/10):** as abertas de hoje e as atrasadas recebem os novos responsáveis e o novo checklist; itens já marcados ficam, itens não marcados que saíram da lista somem. Dia e frequência valem a partir de amanhã (as futuras ainda não concluídas são refeitas). As concluídas não mudam.
 - Excluir: aviso vermelho; para de gerar a partir de amanhã; o histórico fica.
 - Toda criação e alteração vai para o Histórico, com o que mudou ("recorrência: toda sexta → toda quinta").
 - *Fora por enquanto:* anual.
@@ -243,3 +243,16 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 
 - Texto maior por padrão (115%) e controle **A A A A** no rodapé da barra lateral: 100% · 115% · 130% · 145%. Tudo cresce junto (texto, botões, tabelas). Escolha salva no navegador.
 - Contraste maior nos textos secundários e cinzas, no claro e no escuro.
+
+## Seções da Central e prévias (24/10/2026)
+- Menu por seção: **Início**, **Comercial** (Carteira, Preços e contratos, Vendas), **Onboarding**, **Operação** (Painel do dia, Tarefas, Calendário, Solicitações, Histórico, Cadastros) e **Configurações** (Colaboradores, Perfis).
+- Início, Comercial, Onboarding e Perfis são **prévias**: só leitura, nada grava. O que já existe no banco aparece de verdade (marcado "dado real"); o resto fica marcado "ilustrativo".
+- Carteira: quadrante honorário × horas do cronômetro (média mensal dos últimos 90 dias); sem dados suficientes mostra clientes de exemplo.
+- Onboarding: 7 etapas da largada à chegada; hoje o banco só confirma cadastro, acessos e rotinas.
+- Gráficos do Painel do dia: com período de um dia só (ex.: "Hoje"), os três gráficos usam os 10 dias úteis até o dia, para nunca ficarem vazios.
+
+## Informações, Datas e Contatos (24/10/2026)
+- Três abas em Cadastros, mesma tabela `central_notas_cliente` (tipo `info`, `data`, `contato`). Cliente vazio = geral da Effective (todos veem).
+- Quem atende o cliente lê, cria e edita; excluir só esconde e fica no histórico (`central_salvar_nota`, `central_excluir_nota`).
+- Datas: obrigatório informar o dia; "repete todo mês" mostra a próxima ocorrência. Lista em ordem do que vem primeiro; hoje/amanhã em vermelho, próximos 7 dias em laranja.
+- Contatos: telefone abre o WhatsApp; e-mail abre o programa de e-mail; os dois têm botão copiar.
