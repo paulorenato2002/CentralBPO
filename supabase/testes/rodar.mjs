@@ -399,5 +399,20 @@ await erro("app não chama o envio", `select public.central_enviar_notificacoes(
 await erro("app não lê o conteúdo de outra pessoa", `select * from public.central_notificacao_conteudo('${P.Bruna}')`, "permission denied");
 await db.exec(`reset role`);
 
+// ---------- 13. salvar a rotina atualiza as abertas de hoje e atrasadas ----------
+console.log("\n13. Salvar a tarefa atualiza as abertas");
+await como(P.Adm);
+const hj = await val(`select public.central_hoje()::text`);
+const rs = (await val(`select public.central_salvar_rotina(null, $1, 'Sincronia teste', 'diaria', '{}', ($2::date - 30), null, true, array[$3]::uuid[], array['Item A','Item B'])`, [E.Alfa, hj, P.Paulo])).rotina_id;
+await db.query(`select public.central_gerar_tarefas($1::date - 10, $1::date, $2)`, [hj, rs]);
+const tAb = await val(`select id from public.tarefas_operacionais where rotina_empresa_id = $1 and status = 'pendente' and prazo <= $2::date order by prazo desc limit 1`, [rs, hj]);
+checar("tarefa aberta de hoje/atrasada existe", !!tAb);
+await db.query(`update public.central_tarefa_checklist set marcado = true where tarefa_id = $1 and texto = 'Item A'`, [tAb]);
+await db.query(`select public.central_salvar_rotina($1, $2, 'Sincronia teste', 'diaria', '{}', ($3::date - 30), null, true, array[$4]::uuid[], array['Item C','Item A'])`, [rs, E.Alfa, hj, P.Carlos]);
+const respAb = (await db.query(`select usuario_id from public.central_tarefa_responsaveis where tarefa_id = $1`, [tAb])).rows.map((r) => r.usuario_id);
+checar("aberta recebe o novo responsável", respAb.length === 1 && respAb[0] === P.Carlos, JSON.stringify(respAb));
+const ckAb = (await db.query(`select texto, marcado from public.central_tarefa_checklist where tarefa_id = $1 order by ordem`, [tAb])).rows;
+checar("aberta recebe o novo checklist, na ordem nova, e mantém o item marcado", JSON.stringify(ckAb) === JSON.stringify([{ texto: "Item C", marcado: false }, { texto: "Item A", marcado: true }]), JSON.stringify(ckAb));
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

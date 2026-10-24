@@ -342,7 +342,7 @@ export async function desenharRotinas(recarregar = true) {
   if (recarregar) { rotinas = await todas(() => sb.from("central_vw_rotinas").select("*").order("id")); agrupar(); }
   const adm = permite("rotina");
   $("#ctNova").textContent = adm ? "+ Nova tarefa" : "Pedir tarefa nova ao Adm";
-  $("#ctFoot").textContent = adm ? "Cada tarefa vale para os clientes marcados nela. Clique para mudar clientes, dia, responsável ou checklist. Mudanças valem a partir de amanhã."
+  $("#ctFoot").textContent = adm ? "Cada tarefa vale para os clientes marcados nela. Clique para mudar clientes, dia, responsável ou checklist. Responsável e checklist já mudam nas abertas de hoje e nas atrasadas; dia e frequência valem para as próximas."
     : "Só o Adm cadastra, altera ou exclui tarefas. Clique numa tarefa para ver os detalhes ou pedir alteração.";
   const fe = $("#ctEmp").value, fr = $("#ctResp").value, busca = $("#ctQ").value.trim().toLowerCase();
   const ord = { diaria: 1, semanal: 2, quinzenal: 3, mensal: 4, anual: 5 };
@@ -471,7 +471,7 @@ async function salvarTarefa() {
     }
     await desenharRotinas();
     if (falhas.length) return msg("#rMsg", `Salvo em ${feitos}; não deu em: ${falhas.join(" · ")}`);
-    toast(feitos ? `Tarefa salva · ${feitos} cliente(s) atualizado(s) · vale a partir de amanhã` : "Nada mudou");
+    toast(feitos ? `Tarefa salva · ${feitos} cliente(s) atualizado(s) · abertas de hoje já atualizadas` : "Nada mudou");
     $("#rotF").hidden = true;
   };
   if (tirar.length) {
