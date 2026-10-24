@@ -256,3 +256,9 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - Quem atende o cliente lê, cria e edita; excluir só esconde e fica no histórico (`central_salvar_nota`, `central_excluir_nota`).
 - Datas: obrigatório informar o dia; "repete todo mês" mostra a próxima ocorrência. Lista em ordem do que vem primeiro; hoje/amanhã em vermelho, próximos 7 dias em laranja.
 - Contatos: telefone abre o WhatsApp; e-mail abre o programa de e-mail; os dois têm botão copiar.
+
+## Institucional, fotos e logos (24/10/2026)
+- Seção **Institucional** (sem marca de prévia): quem é quem por nível com foto, ciclo do cliente, clientes com logo e quem atende, o que fazemos por assunto (rotinas ativas reais), parceiros.
+- Fotos da equipe, logos dos clientes e os textos do Institucional são da instalação: ficam no banco (`central_imagens`, `central_conteudo`), nunca no código público. Só quem está logado lê; o app não grava ali. A carga é feita por script privado da instalação.
+- Comercial ficou com Carteira e Preços e contratos (Vendas saiu por enquanto). Preços usa os planos do cadastro, o valor-hora médio da carteira e as datas de contrato para as renovações; honorário só aparece para quem tem a permissão de dados sensíveis.
+- Onboarding: trilha de exemplo + tabela dos clientes atuais com andamento, acessos, rotinas e o que falta.
