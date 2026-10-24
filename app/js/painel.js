@@ -74,15 +74,19 @@ export async function desenharHome() {
   const [ini, fim] = periodo(), hj = E.hoje, dias = diasDoGrafico(ini, fim);
   $("#tPerTxt").textContent = ini === fim ? dmy(ini) : `${dmy(ini)} a ${dmy(fim)}`;
   const de = [ini, hj, dias[0] || ini].sort()[0], ate = [fim, hj].sort()[1];
+  // gráficos: num dia só (ex.: "hoje" de manhã ou no fim de semana) usam os 10 dias úteis até ele, para nunca ficarem vazios
+  const gIni = ini === fim ? (dias[0] || ini) : ini, gFim = ini === fim ? [fim, hj].sort()[1] : fim;
   const [doPeriodo, atrasadas, tempos] = await Promise.all([
     todas(() => sb.from("central_vw_tarefas").select(SEL).gte("alvo", de).lte("alvo", ate).order("id")),
     todas(() => sb.from("central_vw_tarefas").select(SEL).eq("atrasada", true).order("id")),
     todas(() => sb.from("central_vw_tarefas").select("titulo, tipo_recorrencia, responsaveis, concluida_por, concluida_em, duracao_segundos")
       .eq("status", "concluida").not("duracao_segundos", "is", null)
-      .gte("concluida_em", inicioDia(somaDias(ini, -90))).lte("concluida_em", fimDia(fim)).order("concluida_em").order("titulo"))
+      .gte("concluida_em", inicioDia(somaDias(gIni, -90))).lte("concluida_em", fimDia(gFim)).order("concluida_em").order("titulo"))
   ]);
   if (meu !== pedidoHome) return;   // o filtro mudou no meio do caminho
-  desenharTempoPorCliente(ini, fim).catch(avisoErro);
+  const janela = ini === fim ? "· últimos 10 dias úteis" : "";
+  desenharTempoPorCliente(gIni, gFim, janela).catch(avisoErro);
+  $("#g2sub").textContent = janela;
   const vis = (t) => (!soMinhas || minha(t) || t.concluida_por === E.eu.id) && (!hTipos.size || hTipos.has(t.tipo_recorrencia));
   const porId = new Map([...doPeriodo, ...atrasadas].map((t) => [t.id, t]));
   const ts = [...porId.values()].filter(vis);
@@ -126,7 +130,7 @@ export async function desenharHome() {
 
   // gráfico 2: tempo médio por tarefa no período × média dos 90 dias antes
   const noP = {}, antes = {};
-  tempos.filter(vis).forEach((t) => { const d = diaDe(t.concluida_em), m = d >= ini ? noP : antes; (m[t.titulo] = m[t.titulo] || []).push(t.duracao_segundos); });
+  tempos.filter(vis).forEach((t) => { const d = diaDe(t.concluida_em), m = d >= gIni ? noP : antes; (m[t.titulo] = m[t.titulo] || []).push(t.duracao_segundos); });
   const media = (a) => a.reduce((x, y) => x + y, 0) / a.length;
   const linhas = Object.entries(noP).map(([nm, a]) => ({ nm, n: a.length, p: media(a), h: antes[nm] ? media(antes[nm]) : null }))
     .sort((a, b) => b.p * b.n - a.p * a.n).slice(0, 8);
@@ -144,14 +148,14 @@ export async function desenharHome() {
 }
 
 // tempo gasto por cliente no período: soma do cronômetro (todas as pessoas que a pessoa logada pode ver)
-async function desenharTempoPorCliente(ini, fim) {
+async function desenharTempoPorCliente(ini, fim, janela = "") {
   const sess = await todas(() => sb.from("central_vw_sessoes").select("empresa_id, dia, tempo_ativo_segundos").gte("dia", ini).lte("dia", fim).order("id"));
   const por = new Map();
   sess.forEach((s) => { const x = por.get(s.empresa_id) || { seg: 0, dias: new Set() }; x.seg += Number(s.tempo_ativo_segundos || 0); x.dias.add(s.dia); por.set(s.empresa_id, x); });
   const linhas = [...por.entries()].map(([id, x]) => ({ c: cliente(id), seg: x.seg, dias: x.dias.size })).filter((l) => l.seg > 0).sort((a, b) => b.seg - a.seg);
   const total = linhas.reduce((a, l) => a + l.seg, 0), mx = Math.max(1, ...linhas.map((l) => l.seg)) * 1.05;
   const h = (s) => { const m = Math.round(s / 60); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); };
-  $("#g3sub").textContent = total ? `· total ${h(total)}` : "";
+  $("#g3sub").textContent = [janela, total ? `· total ${h(total)}` : ""].filter(Boolean).join(" ");
   $("#g3").innerHTML = linhas.map((l) => `<div class="gr" title="${esc(l.c.nome)}: ${h(l.seg)} em ${l.dias} dia(s)">
       <span class="gn">${esc(l.c.codigo)} ${esc(l.c.nome)}</span>
       <div class="gbar"><i style="width:${(l.seg / mx) * 100}%"></i></div>
