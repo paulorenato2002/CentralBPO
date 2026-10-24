@@ -267,3 +267,9 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - **Novo onboarding**: formulário de entrada (dados, contrato, contato, sistemas e equipe) e, ao lado, o que vai ser criado com as datas contadas da entrada. Ainda não grava.
 - **Status geral**: trilha de exemplo e tabela dos clientes atuais.
 - **Checklist padrão**: 6 fases, 26 itens com quem faz e prazo (D+n). Melhorias incluídas: grupo do cliente pela Conta Azul, conta PJ Conta Azul (só se o cliente não tiver), usuário da Effective no Conta Azul, Conta Azul configurado, conferidor de agendamentos, agente de IA com a memória do cliente, avisos por e-mail. Edição do checklist entra quando o onboarding tiver tabela.
+
+## Institucional = mapa original da empresa (24/10/2026)
+- A tela Institucional mostra o mapa da empresa no formato original (planta, hierarquia, fluxos, tarefas por tipo), dentro da Central.
+- O HTML do mapa fica no banco (`central_conteudo`, chave `mapa_html`), não no código público; a página `app/mapa.html` só abre dentro da Central e só para quem está logado.
+- `app/mapa.html` tem cabeçalho de segurança próprio (vercel.json): permite os scripts do mapa e ser exibida dentro da Central; o resto do app segue com a regra rígida.
+- O tema do mapa acompanha o da Central (troca o tema → o mapa recarrega).

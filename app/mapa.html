@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Institucional</title>
+<!-- Moldura do Institucional: o conteúdo (mapa da empresa) vem do banco, só para quem está logado.
+     Esta página tem cabeçalho de segurança próprio (vercel.json) para rodar o mapa dentro da Central. -->
+<script src="./config.js"></script>
+<script src="./vendor/supabase.js"></script>
+<script src="./js/mapa-moldura.js"></script>
+<style>body{margin:0;font:14px/1.5 system-ui,"Segoe UI",Arial,sans-serif;color:#5c6672;display:grid;place-content:center;min-height:100vh}</style>
+</head>
+<body><p id="msg">Carregando…</p></body>
+</html>

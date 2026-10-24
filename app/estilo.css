@@ -704,3 +704,7 @@ td{white-space:normal}td.n,th,td .tag,td .qt,td .abrir,td button{white-space:now
 @media (max-width:1100px){.timer .st{display:none}}
 /* Painel do dia: nome do cliente não espreme */
 #v-home td.emp{min-width:190px}
+/* Institucional: o mapa ocupa a área toda e rola por dentro */
+.mapafr{display:block;width:100%;height:calc(100vh / var(--zoom,1.15) - 52px - 40px);border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+#v-previa:has(.mapafr) #pvConteudo{margin:-6px -6px 0}
+@media (max-width:820px){.mapafr{height:calc(100vh / var(--zoom,1.15) - 160px)}}
