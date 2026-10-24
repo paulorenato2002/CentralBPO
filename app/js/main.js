@@ -1,6 +1,7 @@
 // Entrada do app: login, contexto da pessoa, navegação, lista de clientes e histórico.
 import * as Prev from "./previas.js";
 import * as Notas from "./notas.js";
+import { carregarImagens } from "./imagens.js";
 import { sb, q, rpc, retornoDoLink } from "./api.js";
 import { E, cliente, nomeDe, segundosRodando } from "./estado.js";
 import { $, esc, hms, hojeISO, dataHora, PAPEL, toast, avisoErro, travar } from "./ui.js";
@@ -193,7 +194,7 @@ async function abrirApp() {
   E.eu = { id: user.id, nome: nomeDe(user.id) !== "—" ? nomeDe(user.id) : user.email, email: user.email, papel: eu.papel_central };
   const perm = await q(sb.from("central_permissoes").select("acao, valor").eq("papel_central", eu.papel_central));
   E.perm = Object.fromEntries(perm.map((p) => [p.acao, p.valor]));
-  await carregarClientes();
+  await Promise.all([carregarClientes(), carregarImagens().catch(() => {})]);
   $("#eu").textContent = E.eu.nome; $("#papel").textContent = PAPEL[E.eu.papel] || E.eu.papel;
   $("#hoje").textContent = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   mostrar("app");

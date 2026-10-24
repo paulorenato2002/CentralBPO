@@ -10,7 +10,8 @@ export const E = {
   // cronômetro: sessão rodando agora (só uma por pessoa)
   rodando: null,       // { id, empresa_id, base, checkpoint, em }  (base = segundos ativos quando lemos, em = Date.now() da leitura)
   sessoesHoje: new Map(), // empresa_id → { estado, tempo, finalizada_em }
-  diaFechado: false
+  diaFechado: false,
+  imgs: new Map()      // chave → data URI (fotos e logos)
 };
 
 export const pode = (acao) => E.eu && (E.eu.papel === "administrador" || E.perm[acao] === "s");
