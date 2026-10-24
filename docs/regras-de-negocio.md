@@ -262,3 +262,8 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - Fotos da equipe, logos dos clientes e os textos do Institucional são da instalação: ficam no banco (`central_imagens`, `central_conteudo`), nunca no código público. Só quem está logado lê; o app não grava ali. A carga é feita por script privado da instalação.
 - Comercial ficou com Carteira e Preços e contratos (Vendas saiu por enquanto). Preços usa os planos do cadastro, o valor-hora médio da carteira e as datas de contrato para as renovações; honorário só aparece para quem tem a permissão de dados sensíveis.
 - Onboarding: trilha de exemplo + tabela dos clientes atuais com andamento, acessos, rotinas e o que falta.
+
+## Onboarding em 3 abas (24/10/2026, prévia)
+- **Novo onboarding**: formulário de entrada (dados, contrato, contato, sistemas e equipe) e, ao lado, o que vai ser criado com as datas contadas da entrada. Ainda não grava.
+- **Status geral**: trilha de exemplo e tabela dos clientes atuais.
+- **Checklist padrão**: 6 fases, 26 itens com quem faz e prazo (D+n). Melhorias incluídas: grupo do cliente pela Conta Azul, conta PJ Conta Azul (só se o cliente não tiver), usuário da Effective no Conta Azul, Conta Azul configurado, conferidor de agendamentos, agente de IA com a memória do cliente, avisos por e-mail. Edição do checklist entra quando o onboarding tiver tabela.

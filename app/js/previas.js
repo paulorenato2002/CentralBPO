@@ -7,7 +7,7 @@ import { $, esc, dmy, somaDias, diaSemana, avisoErro } from "./ui.js";
 import { avatar, logo, imagem } from "./imagens.js";
 
 export const VIEWS = { inicio: "Início", institucional: "Institucional", carteira: "Carteira de clientes", precos: "Preços, planos e contratos",
-  onboarding: "Onboarding", perfis: "Perfis da equipe" };
+  obnovo: "Novo onboarding", onboarding: "Onboarding · status geral", obconfig: "Onboarding · checklist padrão", perfis: "Perfis da equipe" };
 export const eh = (v) => v in VIEWS;
 
 const PAPEL = { estagiaria: "Estagiária", analista: "Analista", supervisor: "Supervisor", gestor_financeiro: "Gestor financeiro", administrador: "Administrador" };
@@ -28,10 +28,21 @@ export async function desenhar(view) {
   const alvo = $("#pvConteudo");
   $("#pvFaixa").hidden = view === "institucional";
   alvo.innerHTML = '<div class="zero" style="padding:24px">Carregando…</div>';
-  try { alvo.innerHTML = await ({ inicio, institucional, carteira, precos, onboarding, perfis })[view](); ligar(view); }
+  try { alvo.innerHTML = await ({ inicio, institucional, carteira, precos, obnovo, onboarding, obconfig, perfis })[view](); ligar(view); }
   catch (e) { alvo.innerHTML = ""; avisoErro(e); }
 }
 function ligar(view) {
+  if (view === "obnovo") {
+    const f = $("#obForm"), resumo = () => {
+      const d = f.inicio.value || E.hoje, nova = f.ca.value === "nao";
+      const itens = CHECK.flatMap((g) => g.itens.filter((i) => !(i.so === "pj" && !nova)));
+      const fim = somaDias(d, Math.max(...itens.filter((i) => i.d <= 15).map((i) => i.d)));
+      $("#obPrev").innerHTML = `<div class="obres"><b>${itens.length}</b><span>itens no checklist</span></div>
+        <div class="obres"><b>${dmy(fim)}</b><span>previsão para começar a operação</span></div>
+        <ol class="obtl">${CHECK.map((g) => `<li><b>${esc(g.fase)}</b><small>até ${dmy(somaDias(d, Math.max(...g.itens.map((i) => i.d))))}</small></li>`).join("")}</ol>`;
+    };
+    f.addEventListener("input", resumo); f.addEventListener("submit", (ev) => ev.preventDefault()); resumo();
+  }
   if (view === "precos") {
     const calc = () => { const h = Number($("#simH").value || 0), v = Number($("#simV").value || 0), m = Number($("#simM").value || 0); $("#simR").textContent = brl(h * v * (1 + m / 100)); };
     ["#simH", "#simV", "#simM"].forEach((s) => $(s).addEventListener("input", calc)); calc();
@@ -200,6 +211,90 @@ async function precos() {
 }
 
 /* ---------------- Onboarding ---------------- */
+// checklist padrão (prévia): fase, item, quem faz, prazo em dias depois da entrada; novo = melhoria que entrou no processo
+const CHECK = [
+  { fase: "Contrato e cadastro", itens: [
+    { t: "Contrato assinado e enviado ao financeiro", q: "Comercial", d: 0 },
+    { t: "Cliente cadastrado na Central (ficha, plano, honorário, contatos)", q: "Administração", d: 1 },
+    { t: "Grupo do cliente criado pela Conta Azul", q: "Analista", d: 1, novo: true },
+    { t: "Formulário de entrada enviado ao cliente", q: "Analista", d: 1 }] },
+  { fase: "Coleta de documentos", itens: [
+    { t: "Contrato social e cartão CNPJ", q: "Cliente", d: 5 },
+    { t: "Extratos bancários dos últimos 3 meses", q: "Cliente", d: 5 },
+    { t: "Contas a pagar em aberto e boletos do mês", q: "Cliente", d: 5 },
+    { t: "Folha de pagamento e pró-labore", q: "Cliente", d: 7 },
+    { t: "Contratos recorrentes (aluguel, sistemas, fornecedores)", q: "Cliente", d: 7 }] },
+  { fase: "Acessos", itens: [
+    { t: "Internet banking com perfil de operador", q: "Cliente", d: 7 },
+    { t: "E-mail financeiro", q: "Cliente", d: 7 },
+    { t: "Plataforma de cartão / maquininha", q: "Cliente", d: 7 },
+    { t: "Prefeitura e emissão de NFS-e", q: "Cliente", d: 10 },
+    { t: "Senhas cadastradas em Senhas e acessos da Central", q: "Analista", d: 10 }] },
+  { fase: "Sistemas", itens: [
+    { t: "Abertura da conta PJ Conta Azul", q: "Cliente + Analista", d: 10, novo: true, so: "pj" },
+    { t: "Usuário da Effective convidado no Conta Azul", q: "Cliente", d: 7, novo: true },
+    { t: "Conta Azul configurado (plano de contas, centros de custo, bancos conectados)", q: "Analista", d: 12, novo: true },
+    { t: "Conferidor de agendamentos ligado para o cliente", q: "Analista", d: 14, novo: true },
+    { t: "Agente de IA com a memória do cliente (contatos, particularidades)", q: "Administração", d: 14, novo: true },
+    { t: "Avisos por e-mail da equipe incluindo o cliente", q: "Administração", d: 14, novo: true }] },
+  { fase: "Rotinas", itens: [
+    { t: "Rotinas diárias, semanais e mensais cadastradas na Central", q: "Analista", d: 14 },
+    { t: "Checklist de cada rotina e responsáveis definidos", q: "Analista", d: 14 },
+    { t: "Datas do cliente (cartão, impostos, folha) em Datas e lembretes", q: "Analista", d: 14 }] },
+  { fase: "Início da operação", itens: [
+    { t: "Reunião de início com o cliente", q: "Supervisão", d: 15 },
+    { t: "Primeira semana acompanhada pelo analista", q: "Analista", d: 22 },
+    { t: "Revisão de 60 dias com o cliente", q: "Supervisão", d: 60 }] }
+];
+
+async function obnovo() {
+  const ops = (l) => l.map((x) => `<option>${esc(x)}</option>`).join("");
+  const pessoas = equipeAtiva().map((p) => `<option>${esc(p.nome)}</option>`).join("");
+  return `<p class="pvintro">Cadastro de um cliente novo: dados de entrada, quem cuida e o que vai ser preciso. Ao criar, o checklist padrão nasce com as datas contadas da entrada.</p>
+    <div class="obgrid"><form class="blk obform" id="obForm" autocomplete="off">
+      <div class="blkhd">Dados do cliente ${ilus}</div>
+      <div class="fg">
+        <label style="grid-column:1/-1">Razão social<input name="razao" placeholder="Ex.: Empresa Exemplo Ltda"></label>
+        <label>Nome fantasia<input name="fantasia"></label><label>CNPJ<input name="cnpj" placeholder="00.000.000/0000-00"></label>
+        <label>Regime<select name="regime">${ops(["Simples Nacional", "Lucro Presumido", "Lucro Real", "MEI"])}</select></label>
+        <label>Segmento<input name="segmento" placeholder="Ex.: varejo, academia, serviços"></label>
+      </div>
+      <div class="blkhd">Contrato</div>
+      <div class="fg">
+        <label>Data de entrada<input name="inicio" type="date" value="${E.hoje}"></label>
+        <label>Plano<select name="plano">${ops(["Essencial", "Profissional", "Premium", "Sob medida"])}</select></label>
+        <label>Honorário mensal (R$)<input name="honorario" type="number" min="0" step="50"></label>
+        <label>Origem<select name="origem">${ops(["Indicação", "Carteira contábil", "Venda direta"])}</select></label>
+      </div>
+      <div class="blkhd">Contato principal</div>
+      <div class="fg">
+        <label>Nome<input name="contato"></label><label>Cargo<input name="cargo" placeholder="Ex.: sócia"></label>
+        <label>Telefone / WhatsApp<input name="tel" inputmode="tel"></label><label>E-mail financeiro<input name="email" type="email"></label>
+      </div>
+      <div class="blkhd">Sistemas e equipe</div>
+      <div class="fg">
+        <label>Já usa Conta Azul?<select name="ca"><option value="sim">Sim, já tem conta</option><option value="nao">Não: abrir conta PJ Conta Azul</option></select></label>
+        <label>Bancos<input name="bancos" placeholder="Ex.: Itaú, Inter"></label>
+        <label>Analista responsável<select name="analista">${pessoas}</select></label>
+        <label>Quem executa as rotinas<select name="exec">${pessoas}</select></label>
+        <label style="grid-column:1/-1">Particularidades<textarea name="obs" rows="3" placeholder="O que o cliente pediu de diferente, dores, prazos combinados"></textarea></label>
+      </div>
+      <div class="obbtns"><button class="dbtn" type="submit" disabled title="Prévia: ainda não grava">Criar onboarding</button><button class="dbtn sec" type="button" disabled>Enviar formulário ao cliente</button>
+        <small class="zero">Prévia: os botões ficam ativos quando o onboarding tiver tabela própria.</small></div>
+    </form>
+    <div class="blk obside"><div class="blkhd">O que vai ser criado</div><div id="obPrev"></div></div></div>`;
+}
+
+async function obconfig() {
+  const todos = CHECK.flatMap((g) => g.itens), novos = todos.filter((i) => i.novo).length;
+  return `<p class="pvintro">O checklist que todo cliente novo recebe. Cada item tem quem faz e o prazo em dias depois da entrada (D+0 = dia da entrada). Os marcados <span class="qt q2">melhoria</span> são os sistemas e automações que entraram no processo.</p>
+    <div class="pvnums"><div><b>${CHECK.length}</b><span>fases</span></div><div><b>${todos.length}</b><span>itens</span></div><div><b>${novos}</b><span>melhorias incluídas</span></div><div><b>${Math.max(...todos.map((i) => i.d))} dias</b><span>do contrato à revisão</span></div></div>
+    ${CHECK.map((g, gi) => `<div class="blk obfase"><div class="blkhd"><span class="obn">${gi + 1}</span>${esc(g.fase)} <span class="zero obqt">${g.itens.length} itens</span></div>
+      <table class="obck"><tbody>${g.itens.map((i) => `<tr><td class="obt">${esc(i.t)}${i.novo ? ' <span class="qt q2">melhoria</span>' : ""}${i.so === "pj" ? ' <small class="zero">só se o cliente não tiver Conta Azul</small>' : ""}</td>
+        <td class="obq">${esc(i.q)}</td><td class="obd">D+${i.d}</td></tr>`).join("")}</tbody></table></div>`).join("")}
+    <div class="foot"><span>Prévia: editar o checklist (incluir, tirar, mudar prazo) entra quando o onboarding tiver tabela própria.</span></div>`;
+}
+
 const ETAPAS = ["Contrato assinado", "Formulário de entrada", "Cadastro no sistema", "Documentos essenciais", "Acessos (bancos, e-mail, cartão)", "Rotinas configuradas", "Início da operação"];
 async function onboarding() {
   const [cc, acs, rots] = await Promise.all([

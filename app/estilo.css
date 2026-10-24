@@ -667,8 +667,6 @@ aside .grp2{padding-top:10px}
 .itp ul{margin:0;padding-left:16px;font-size:12.5px;color:var(--ink2)}
 .iparc{display:flex;gap:16px;flex-wrap:wrap;align-items:center}.iparc img{height:48px;max-width:200px;object-fit:contain;background:#fff;border-radius:6px;padding:4px 8px}
 /* topo: o texto do cronômetro não quebra em 3 linhas */
-.timer .st,#timer span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.timer{min-width:0;max-width:340px}
 /* desktop: a janela não rola; menu e conteúdo rolam cada um no seu lugar (menu comprido cortava o conteúdo) */
 @media (min-width:821px){
   body{height:calc(100vh / var(--zoom,1.15));overflow:hidden}
@@ -678,3 +676,31 @@ aside .grp2{padding-top:10px}
 .pvplano span{display:block}.pvplano em{font-size:15px}
 .pvsim input{max-width:100%;min-width:0}
 .pvsim{padding:12px 14px}.pvlista{padding:4px 14px}.blk>.pvlista li{padding:8px 0}
+
+/* Onboarding: novo e checklist padrão */
+.obgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:14px;align-items:start}
+.obform{padding-bottom:14px}.obform .fg{padding:10px 14px 14px}.obform .fg label{display:grid;gap:4px;font-size:12.5px;color:var(--ink2)}
+.obform input,.obform select,.obform textarea{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);min-width:0;width:100%}
+.obbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 14px}.obbtns .dbtn{margin:0}.obbtns .dbtn:disabled{opacity:.55;cursor:not-allowed}
+.obside{position:sticky;top:0}.obside #obPrev{padding:12px 14px;display:grid;gap:12px}
+.obres b{display:block;font-size:20px}.obres span{font-size:12px;color:var(--ink3)}
+.obtl{list-style:none;margin:4px 0 0 6px;padding:0 0 0 16px;border-left:2px solid var(--line);display:grid;gap:10px}
+.obtl li{position:relative}.obtl li::before{content:"";position:absolute;left:-22px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.obtl b{display:block;font-size:13px}.obtl small{color:var(--ink3);font-size:12px}
+.obfase{margin-bottom:12px}.obqt{text-transform:none;letter-spacing:0;font-weight:400;margin-left:6px}
+.obn{display:inline-grid;place-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--panel);font-size:11.5px;margin-right:8px;letter-spacing:0}
+.obck{width:100%;border-collapse:collapse}.obck td{padding:8px 14px;border-top:1px solid var(--line2);font-size:13px;vertical-align:top}
+.obck .obq{color:var(--ink2);white-space:nowrap;width:1%}.obck .obd{color:var(--ink3);text-align:right;white-space:nowrap;width:1%;font-variant-numeric:tabular-nums}
+@media (max-width:1100px){.obgrid{grid-template-columns:minmax(0,1fr)}.obside{position:static}}
+@media (max-width:820px){.obck .obq{white-space:normal}.obform .fg{grid-template-columns:minmax(0,1fr)}}
+.obck{table-layout:fixed}.obck .obt{white-space:normal;word-break:break-word}.obck .obq{width:150px;white-space:normal}.obck .obd{width:60px}
+@media (max-width:1100px){#hoje{display:none}}
+/* tabelas: o texto quebra linha em vez de empurrar a tabela para o lado; números e títulos continuam numa linha só */
+td{white-space:normal}td.n,th,td .tag,td .qt,td .abrir,td button{white-space:nowrap}
+/* topo: cronômetro numa linha só; o nome do cliente encurta antes dos botões */
+.timer{min-width:0;flex:0 1 auto}
+.timer button,.timer b,.timer .st{white-space:nowrap;flex:none}
+#tEmp{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:60px;max-width:220px}
+@media (max-width:1100px){.timer .st{display:none}}
+/* Painel do dia: nome do cliente não espreme */
+#v-home td.emp{min-width:190px}
