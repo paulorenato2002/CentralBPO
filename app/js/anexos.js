@@ -1,4 +1,4 @@
-// Anexos de imagem (ou PDF) presos a um cartão: acesso (Senhas) ou nota (Informações, Datas, Contatos).
+// Anexos de imagem (ou PDF) presos a um cartão: acesso (Senhas), nota (Informações, Datas, Contatos) ou chamado (Solicitações).
 // A lista vem de central_anexos (sem o arquivo); o arquivo sai cifrado do banco só por central_abrir_anexo.
 // Cartão ainda não salvo: os arquivos esperam na fila e sobem depois do salvar (enviarFila).
 import { sb, rpc, todas } from "./api.js";
@@ -6,8 +6,8 @@ import { $, esc, toast, avisoErro, perguntar } from "./ui.js";
 
 export const CATS = ["Senha", "Print da tela", "Documento", "Comprovante", "Cartão / token", "Outro"];
 const TIPOS = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
-const MAX = 2.5 * 1024 * 1024;
-const st = {};   // por gaveta: { tipo, id, lista, fila, pode, tira }
+const MAX = 5 * 1024 * 1024;
+const st = {};   // por gaveta: { tipo, id, lista, fila, pode, tira, depois }
 
 // quantos anexos cada cartão tem (para o 📎 nos cartões)
 export async function contar(tipo) {
@@ -26,7 +26,7 @@ async function preparar(f) {
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
     blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85)); mime = "image/jpeg"; nome = nome.replace(/\.\w+$/, "") + ".jpg";
   }
-  if (blob.size > MAX) throw new Error(`${nome}: arquivo maior que 2,5 MB.`);
+  if (blob.size > MAX) throw new Error(`${nome}: arquivo maior que 5 MB.`);
   const b64 = await new Promise((r, x) => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(",")[1]); fr.onerror = x; fr.readAsDataURL(blob); });
   return { nome, mime, b64, tamanho: blob.size };
 }
@@ -34,8 +34,9 @@ async function preparar(f) {
 const kb = (n) => (n > 1024 * 1024 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 // monta o bloco dentro da gaveta: <div id="..."> vira a lista + botão de anexar
-export async function abrir(caixa, tipo, id, { pode = true, tira = true } = {}) {
-  const s = (st[caixa] = { tipo, id, lista: [], fila: [], pode, tira });
+// depois: chamado depois de anexar ou tirar (ex.: a solicitação recarrega o andamento)
+export async function abrir(caixa, tipo, id, { pode = true, tira = true, depois = null } = {}) {
+  const s = (st[caixa] = { tipo, id, lista: [], fila: [], pode, tira, depois });
   if (id) s.lista = await todas(() => sb.from("central_anexos").select("id, nome, categoria, mime, tamanho, created_at").eq("alvo_tipo", tipo).eq("alvo_id", id).order("created_at"));
   desenhar(caixa);
 }
@@ -47,7 +48,7 @@ function desenhar(caixa) {
     ${a.categoria ? `<span class="tipo">${esc(a.categoria)}</span>` : ""}<span class="zero">${fila ? "sobe ao salvar" : kb(a.tamanho)}</span>
     ${fila ? `<button type="button" class="mb" data-tirafila="${i}">tirar</button>` : s.tira ? `<button type="button" class="mb" data-tira="${a.id}">tirar</button>` : ""}</div>`;
   el.innerHTML = `<h5>Anexos</h5>${s.lista.map((a, i) => item(a, i, false)).join("")}${s.fila.map((a, i) => item(a, i, true)).join("")}
-    ${!s.lista.length && !s.fila.length ? '<div class="zero" style="font-size:12px">Nenhum anexo. Anexe um print, uma foto ou um PDF (até 2,5 MB). Também dá para colar um print com Ctrl+V.</div>' : ""}
+    ${!s.lista.length && !s.fila.length ? '<div class="zero" style="font-size:12px">Nenhum anexo. Anexe um print, uma foto ou um PDF (até 5 MB). Também dá para colar um print com Ctrl+V.</div>' : ""}
     ${s.pode ? `<div class="anxadd"><select data-cat><option value="">Categoria…</option>${CATS.map((c) => `<option>${c}</option>`).join("")}</select>
       <label class="dbtn sec anxbtn">+ Anexar<input type="file" accept="image/*,application/pdf" multiple hidden data-arq></label></div>` : ""}`;
   if (el.dataset.ligado) return;
@@ -59,7 +60,7 @@ function desenhar(caixa) {
     if (tf) { s2.fila.splice(Number(tf.dataset.tirafila), 1); return desenhar(caixa); }
     if (t) { const a = s2.lista.find((x) => x.id === t.dataset.tira);
       perguntar(`Tirar o anexo "${a.nome}"?`, "Some do cartão. Fica registrado no histórico.",
-        [{ txt: "Tirar anexo", cls: "red", fn: async () => { await rpc("central_excluir_anexo", { p_id: a.id }); s2.lista = s2.lista.filter((x) => x !== a); desenhar(caixa); toast("Anexo tirado"); } }, { txt: "Voltar" }], true); }
+        [{ txt: "Tirar anexo", cls: "red", fn: async () => { await rpc("central_excluir_anexo", { p_id: a.id }); s2.lista = s2.lista.filter((x) => x !== a); desenhar(caixa); toast("Anexo tirado"); if (s2.depois) s2.depois(); } }, { txt: "Voltar" }], true); }
   });
   // colar print (Ctrl+V) com a gaveta aberta
   el.closest(".drawer").addEventListener("paste", (ev) => {
@@ -79,6 +80,7 @@ async function receber(caixa, files) {
     } catch (e) { avisoErro(e); }
   }
   desenhar(caixa);
+  if (s.id && s.depois) s.depois();
 }
 
 // depois de salvar um cartão novo: sobe o que estava na fila

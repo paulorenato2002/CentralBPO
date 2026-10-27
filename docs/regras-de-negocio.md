@@ -280,3 +280,8 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - O arquivo fica **cifrado** no banco (mesma chave das senhas) e só sai por `central_abrir_anexo`; a lista que o app lê não traz o arquivo. Abrir anexo de senha fica no histórico, como mostrar a senha.
 - Quem pode: anexar em senha = quem cadastra ou altera senha; tirar anexo de senha = quem altera senha; nas notas, quem vê o cliente (nota geral: todos). Tirar só esconde: fica no histórico.
 - Cartão novo: os arquivos esperam e sobem junto com o salvar. No quadro, o cartão mostra 📎 com a quantidade; em Senhas, clicar no 📎 abre o cartão.
+
+## Anexos: 5 MB e Solicitações (27/10/2026)
+- Limite por arquivo sobe para **5 MB** (continua 10 por cartão; foto acima de 1,2 MB segue reduzida na tela).
+- **Solicitações** aceitam anexos (imagem ou PDF), na abertura (sobem junto com o abrir) e na gaveta da solicitação. Quem vê a solicitação (cliente que atende, responsável ou quem abriu; interna: todos) vê, anexa e tira.
+- Anexar ou tirar entra no andamento da conversa ("📎 anexou …"). A lista mostra 📎 com a quantidade.

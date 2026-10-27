@@ -464,6 +464,23 @@ await erro("quem não vê o cliente não abre o anexo", `select public.central_a
 await como(P.Adm);
 await db.query(`select public.central_excluir_anexo($1)`, [ax1]);
 checar("Adm tira o anexo da senha", (await val(`select ativo from public.central_anexos where id = $1`, [ax1])) === false);
+const grande = Buffer.alloc(5 * 1024 * 1024 + 1, 1).toString("base64");
+await erro("arquivo acima de 5 MB", `select public.central_anexar('nota', '${nt2}', 'g.pdf', 'application/pdf', '${grande}')`, "ARQUIVO_GRANDE");
+const ok5 = await val(`select public.central_anexar('nota', $1, 'quase5.pdf', 'application/pdf', $2)`, [nt2, Buffer.alloc(5 * 1024 * 1024, 1).toString("base64")]);
+checar("arquivo de 5 MB entra", !!ok5);
+// solicitação do cliente Beta, de Bruna para Carlos; Ana não atende a Beta
+await como(P.Bruna);
+const chx = await val(`select public.central_abrir_chamado($2, 'Conferir boleto', null, $1, null)`, [P.Carlos, E.Beta]);
+const ax4 = await val(`select public.central_anexar('chamado', $1, 'boleto.pdf', 'application/pdf', $2, 'Comprovante')`, [chx, png]);
+checar("anexo na solicitação entra no andamento", !!ax4 &&
+  (await val(`select count(*) from public.central_chamado_eventos where chamado_id = $1 and texto = '📎 anexou boleto.pdf'`, [chx])) == 1);
+await como(P.Carlos);
+checar("responsável da solicitação abre o anexo", (await val(`select public.central_abrir_anexo($1)`, [ax4])).base64 === png);
+await como(P.Ana);
+await db.exec(`set role authenticated`);
+checar("RLS: quem não está na solicitação não lista o anexo", (await val(`select count(*) from public.central_anexos where id = '${ax4}'`)) == 0);
+await db.exec(`reset role`);
+await erro("quem não está na solicitação não abre", `select public.central_abrir_anexo('${ax4}')`, "CHAMADO_INVALIDO");
 
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);

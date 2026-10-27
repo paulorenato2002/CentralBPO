@@ -2,6 +2,7 @@
 // prazo e uma conversa enxuta com todo o andamento. Grava só pelas funções central_*_chamado.
 import { sb, rpc, q, todas } from "./api.js";
 import { E, nomeDe, papelDe, cliente } from "./estado.js";
+import * as Anx from "./anexos.js";
 import { $, esc, dmy, hhmm, COR_PAPEL, toast, avisoErro, perguntar, travar } from "./ui.js";
 
 export const STATUS = {
@@ -13,7 +14,7 @@ const pp = (id) => (id ? `<span class="pp ${COR_PAPEL[papelDe(id)] || ""}">${esc
 export const tagStatus = (s) => { const [t, c] = STATUS[s] || [s, "t-plain"]; return `<span class="tag ${c}">${esc(t)}</span>`; };
 const quando = (ts) => { const d = ts.slice(0, 10); return d === E.hoje ? `hoje ${hhmm(ts)}` : `${dmy(d)} ${hhmm(ts)}`; };
 
-let app = null, filtro = "abertos", lista = [], aberto = null;
+let app = null, filtro = "abertos", lista = [], aberto = null, anxN = new Map();
 export function iniciar(a) {
   app = a;
   $("#soSit").addEventListener("click", (ev) => { const b = ev.target.closest("button"); if (!b) return; filtro = b.dataset.v;
@@ -53,12 +54,13 @@ export function iniciar(a) {
     if (!titulo) return;
     const id = await rpc("central_abrir_chamado", { p_empresa: f.empresa.value || null, p_titulo: titulo, p_texto: f.texto.value.trim() || null,
       p_responsavel: f.resp.value || null, p_prazo: f.prazo.value || null });
+    await Anx.enviarFila("#nsAnx", id);
     $("#novoCh").hidden = true; $("#nsForm").reset(); toast("Solicitação aberta");
     await desenhar(); if (app && app.depoisDeAbrir) await app.depoisDeAbrir(); await abrir(id);
   })(); };
 }
 
-export function fechar() { aberto = null; $("#chamadoF").hidden = true; $("#novoCh").hidden = true; }
+export function fechar() { aberto = null; $("#chamadoF").hidden = true; $("#novoCh").hidden = true; $("#chAnx").dataset.de = ""; }
 
 const opcEquipe = (sel, vazio) => `<option value="">${vazio}</option>` + [...E.equipe.entries()].filter(([, x]) => x.ativo)
   .sort((a, b) => a[1].nome.localeCompare(b[1].nome)).map(([u, x]) => `<option value="${u}" ${u === sel ? "selected" : ""}>${esc(x.nome)}</option>`).join("");
@@ -71,6 +73,7 @@ export function novo(empresaId) {
   const f = $("#nsForm").elements; $("#nsForm").reset();
   f.empresa.innerHTML = opcClientes(empresaId || "", "Interna (sem cliente)");
   f.resp.innerHTML = opcEquipe("", "Escolha quem resolve…");
+  Anx.abrir("#nsAnx", "chamado", null).catch(avisoErro);
   $("#novoCh").hidden = false; f.titulo.focus();
 }
 
@@ -79,7 +82,7 @@ export async function desenhar(recarregar = true) {
     $("#soEmp").innerHTML = opcClientes("", "Todos os clientes");
     $("#soResp").innerHTML = `<option value="">Todos os responsáveis</option><option value="eu">Comigo</option>` + opcEquipe("", "—").replace('<option value="">—</option>', "");
   }
-  if (recarregar) lista = await todas(() => sb.from("central_vw_chamados").select("*").order("updated_at", { ascending: false }).order("id"));
+  if (recarregar) [lista, anxN] = await Promise.all([todas(() => sb.from("central_vw_chamados").select("*").order("updated_at", { ascending: false }).order("id")), Anx.contar("chamado")]);
   const fe = $("#soEmp").value, fr = $("#soResp").value === "eu" ? E.eu.id : $("#soResp").value, busca = $("#soQ").value.trim().toLowerCase();
   const vis = lista.filter((c) => (filtro === "todos" || (filtro === "abertos" ? ABERTOS.includes(c.status) : !ABERTOS.includes(c.status))) &&
     (!fe || c.empresa_id === fe) && (!fr || c.responsavel === fr) && (!busca || `${c.titulo} ${c.empresa_nome || ""}`.toLowerCase().includes(busca)));
@@ -90,7 +93,7 @@ export async function desenhar(recarregar = true) {
     const atrasada = c.prazo && c.prazo < E.hoje && ABERTOS.includes(c.status);
     return `<tr data-ch="${c.id}">
       <td>${tagStatus(c.status)}</td>
-      <td><b>${esc(c.titulo)}</b><div class="zero" style="font-size:11.5px">aberta por ${esc(nomeDe(c.criado_por))} · ${esc(quando(c.created_at))}${c.comentarios ? ` · ${c.comentarios} mensage${c.comentarios == 1 ? "m" : "ns"}` : ""}</div></td>
+      <td><b>${esc(c.titulo)}</b>${Anx.clipe(anxN.get(c.id))}<div class="zero" style="font-size:11.5px">aberta por ${esc(nomeDe(c.criado_por))} · ${esc(quando(c.created_at))}${c.comentarios ? ` · ${c.comentarios} mensage${c.comentarios == 1 ? "m" : "ns"}` : ""}</div></td>
       <td>${c.empresa_id ? `<span class="cli-chip">${esc(c.empresa_codigo)} ${esc(c.empresa_nome)}</span>` : '<span class="zero">interna</span>'}</td>
       <td>${pp(c.responsavel)}</td>
       <td class="${atrasada ? "velha" : ""}">${c.prazo ? dmy(c.prazo) : '<span class="zero">—</span>'}</td>
@@ -122,6 +125,8 @@ export async function abrir(id) {
     return `<li class="sis"><small>${q2}</small> ${quem} ${acao}${e.texto ? `<div class="msg-ob">${esc(e.texto)}</div>` : ""}</li>`;
   };
   $("#chConversa").innerHTML = evs.map(linha).join("");
+  if (!$("#chAnx").dataset.de || $("#chAnx").dataset.de !== id) { $("#chAnx").dataset.de = id;
+    Anx.abrir("#chAnx", "chamado", id, { depois: () => Promise.all([abrir(id), desenhar()]).catch(avisoErro) }).catch(avisoErro); }
   $("#chamadoF").hidden = false;
   const box = $("#chConversa"); box.scrollTop = box.scrollHeight;
 }
