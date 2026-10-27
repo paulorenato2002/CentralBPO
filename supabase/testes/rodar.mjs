@@ -439,5 +439,31 @@ await db.exec(`set role authenticated`);
 checar("excluída some da lista", (await val(`select count(*) from public.central_notas_cliente where id = '${nt1}'`)) == 0);
 await db.exec(`reset role`);
 
+// ---------- 15. anexos de imagem nos cartões ----------
+console.log("\n15. Anexos de imagem");
+const png = Buffer.from("imagem-ficticia").toString("base64");
+await como(P.Ana);
+const acx = (await val(`select public.central_salvar_acesso(null, $1, 'Senha avulsa', 'outro', null, null, null, null)`, [E.Alfa])).acesso_id;
+const ax1 = await val(`select public.central_anexar('acesso', $1, 'print.png', 'image/png', $2, 'Token')`, [acx, png]);
+checar("estagiária anexa imagem na senha que cadastrou", !!ax1);
+checar("arquivo fica cifrado no banco", (await val(`select position('imagem-ficticia'::bytea in dados) from public.central_anexos where id = $1`, [ax1])) == 0);
+const abre = await val(`select public.central_abrir_anexo($1)`, [ax1]);
+checar("abrir devolve o arquivo e registra no histórico", abre.base64 === png && abre.mime === "image/png" &&
+  (await val(`select count(*) from public.eventos_operacionais where entidade_id = $1 and descricao like 'abriu o anexo%'`, [ax1])) == 1);
+await erro("tipo de arquivo não aceito", `select public.central_anexar('acesso', '${acx}', 'x.exe', 'application/x-msdownload', '${png}')`, "ARQUIVO_INVALIDO");
+await erro("estagiária não tira anexo de senha", `select public.central_excluir_anexo('${ax1}')`, "SEM_PERMISSAO");
+const ax2 = await val(`select public.central_anexar('nota', $1, 'cartao.jpg', 'image/jpeg', $2)`, [nt2, png]);
+await db.exec(`set role authenticated`);
+checar("RLS: lista os anexos sem o arquivo", (await val(`select count(*) from public.central_anexos where id in ('${ax1}', '${ax2}')`)) == 2);
+await erro("app não lê o arquivo direto", `select dados from public.central_anexos`, "permission denied");
+await db.exec(`reset role`);
+await como(P.Bruna);
+const ax3 = await val(`select public.central_anexar('nota', $1, 'doc.pdf', 'application/pdf', $2)`, [nt3, png]);
+await como(P.Ana);
+await erro("quem não vê o cliente não abre o anexo", `select public.central_abrir_anexo('${ax3}')`, "NOTA_INVALIDA");
+await como(P.Adm);
+await db.query(`select public.central_excluir_anexo($1)`, [ax1]);
+checar("Adm tira o anexo da senha", (await val(`select ativo from public.central_anexos where id = $1`, [ax1])) === false);
+
 console.log(`\n${ok} ok · ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);
