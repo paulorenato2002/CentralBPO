@@ -273,3 +273,10 @@ Ficam na aba **Cronômetro**, como tabela de registros (data e hora, colaborador
 - O HTML do mapa fica no banco (`central_conteudo`, chave `mapa_html`), não no código público; a página `app/mapa.html` só abre dentro da Central e só para quem está logado.
 - `app/mapa.html` tem cabeçalho de segurança próprio (vercel.json): permite os scripts do mapa e ser exibida dentro da Central; o resto do app segue com a regra rígida.
 - O tema do mapa acompanha o da Central (troca o tema → o mapa recarrega).
+
+## Anexos nos cartões de Senhas e Cadastros (27/10/2026)
+- Todo cartão de **Senhas** (acesso) e de **Informações, Datas e Contatos** (nota) aceita anexos: imagem (JPG, PNG, WebP, GIF) ou PDF, com uma categoria opcional (Senha, Print da tela, Documento, Comprovante, Cartão / token, Outro). Serve para guardar uma senha avulsa, o print de um token, o cartão de um contato.
+- Até 2,5 MB por arquivo e 10 por cartão. Foto acima de 1,2 MB é reduzida na tela (JPEG, até 2000 px) antes de subir. Dá para colar um print com Ctrl+V com a gaveta aberta.
+- O arquivo fica **cifrado** no banco (mesma chave das senhas) e só sai por `central_abrir_anexo`; a lista que o app lê não traz o arquivo. Abrir anexo de senha fica no histórico, como mostrar a senha.
+- Quem pode: anexar em senha = quem cadastra ou altera senha; tirar anexo de senha = quem altera senha; nas notas, quem vê o cliente (nota geral: todos). Tirar só esconde: fica no histórico.
+- Cartão novo: os arquivos esperam e sobem junto com o salvar. No quadro, o cartão mostra 📎 com a quantidade; em Senhas, clicar no 📎 abre o cartão.

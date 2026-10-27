@@ -3,6 +3,7 @@
 // Criar login e redefinir senha passam pela função de servidor /api/admin (só Adm).
 import { sb, rpc, q, todas, apiAdmin } from "./api.js";
 import { E, nomeDe, papelDe, cliente } from "./estado.js";
+import * as Anx from "./anexos.js";
 import { $, esc, dmy, hhmm, hms, somaDias, TIPO, PAPEL, COR_PAPEL, linkSeguro, toast, avisoErro, perguntar, copiar, travar } from "./ui.js";
 
 let app = null;   // { recarregarBase(), fecharOutras() }
@@ -153,7 +154,7 @@ async function salvarFicha() {
 const STIPO = { banco: "Banco", plataforma: "Plataforma", email: "E-mail", governo: "Governo", outro: "Outro" };
 const VELHA = 180;   // dias
 const csTipos = new Set();
-let acessos = [], acessoAlt = null;
+let acessos = [], acessoAlt = null, anxN = new Map();
 const visiveis = new Map();
 
 function iniciarSenhas() {
@@ -187,7 +188,7 @@ async function acaoAcesso(a, act) {
     return desenharSenhas(false);
   }
   if (act === "sol") { const r = await rpc("central_salvar_acesso", { p_id: a.id, p_empresa: a.empresa_id, p_sistema: a.sistema, p_tipo: null, p_link: null, p_usuario: null, p_senha: null, p_observacoes: null }); return avisoGravacao(r, ""); }
-  if (act === "alt") return abrirAcesso(a);
+  if (act === "alt" || act === "anx") return abrirAcesso(a);
   if (act === "exc") {
     perguntar(`Excluir o acesso ${a.sistema}?`, "Some da lista de senhas do cliente. Fica registrado no histórico.",
       [{ txt: "Excluir acesso", cls: "red", fn: async () => { const r = await rpc("central_excluir_acesso", { p_acesso: a.id }); avisoGravacao(r, "Acesso excluído"); fecharAcesso(); await desenharSenhas(); } }, { txt: "Voltar" }], true);
@@ -199,7 +200,8 @@ export async function desenharSenhas(recarregar = true) {
     E.clientes.forEach((c) => $("#csEmp").insertAdjacentHTML("beforeend", `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nome)}</option>`));
   }
   if (recarregar) {
-    acessos = await todas(() => sb.from("central_acessos").select("id, empresa_id, sistema, tipo, link, usuario_login, observacoes, alterada_em, alterada_por").eq("ativo", true).order("id"));
+    [acessos, anxN] = await Promise.all([todas(() => sb.from("central_acessos").select("id, empresa_id, sistema, tipo, link, usuario_login, observacoes, alterada_em, alterada_por").eq("ativo", true).order("id")),
+      Anx.contar("acesso")]);
   }
   $("#csNovoAbrir").textContent = permite("senha_cadastrar") ? "+ Novo acesso" : "+ Novo acesso (vira pedido)";
   const fe = $("#csEmp").value, busca = $("#csQ").value.trim().toLowerCase(), velhas = $("#csVelhas").checked, alt = permite("senha_alterar");
@@ -225,7 +227,7 @@ export async function desenharSenhas(recarregar = true) {
   const cartao = (a) => {
     const link = linkSeguro(a.link), sen = visiveis.get(a.id), d = dias(a);
     return `<div class="scard" data-acc="${a.id}">
-      <div class="st"><b>${esc(a.sistema)}</b>${link ? ` <a class="mb lk" href="${esc(link)}" target="_blank" rel="noopener noreferrer" data-act="link">abrir ↗</a>` : ""}</div>
+      <div class="st"><b>${esc(a.sistema)}</b>${anxN.get(a.id) ? `<button type="button" class="mb" data-act="anx" title="ver os anexos">📎 ${anxN.get(a.id)}</button>` : ""}${link ? ` <a class="mb lk" href="${esc(link)}" target="_blank" rel="noopener noreferrer" data-act="link">abrir ↗</a>` : ""}</div>
       <div class="sl"><span>Usuário</span>${a.usuario_login ? `<code>${esc(a.usuario_login)}</code><button class="mb" type="button" data-act="cu">copiar</button>` : '<span class="zero">—</span>'}</div>
       <div class="sl"><span>Senha</span>${sen !== undefined ? `<pre class="sen">${esc(sen ?? "(sem senha)")}</pre>` : "<code>••••••••</code>"}<button class="mb" type="button" data-act="ver">${sen !== undefined ? "ocultar" : "mostrar"}</button><button class="mb" type="button" data-act="cs">copiar</button></div>
       ${a.observacoes ? `<div class="so">${esc(a.observacoes)}</div>` : ""}
@@ -254,6 +256,7 @@ function abrirAcesso(a) {
   $("#acExcluir").hidden = novo || !permite("senha_alterar");
   $("#acSalvar").textContent = novo ? "Salvar acesso" : permite("senha_alterar") ? "Salvar alteração" : "Pedir alteração ao Adm";
   msg("#acMsg", "");
+  Anx.abrir("#acAnx", "acesso", novo ? null : a.id, { pode: permite("senha_cadastrar") || (!novo && permite("senha_alterar")), tira: permite("senha_alterar") }).catch(avisoErro);
   $("#acessoF").hidden = false; f.sistema.focus();
 }
 async function salvarAcesso() {
@@ -264,6 +267,7 @@ async function salvarAcesso() {
   const r = await rpc("central_salvar_acesso", { p_id: a ? a.id : null, p_empresa: a ? a.empresa_id : f.empresa.value, p_sistema: f.sistema.value.trim(), p_tipo: f.tipo.value,
     p_link: link, p_usuario: f.usuario.value.trim(), p_senha: f.senha.value || null, p_observacoes: f.obs.value.trim() });
   if (a) visiveis.delete(a.id);
+  if (r && r.acesso_id) await Anx.enviarFila("#acAnx", r.acesso_id);
   avisoGravacao(r, a ? "Acesso alterado" : "Acesso salvo");
   fecharAcesso(); await desenharSenhas();
 }

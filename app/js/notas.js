@@ -2,12 +2,13 @@
 // Lê central_notas_cliente (RLS: só clientes que a pessoa vê); grava só por central_salvar_nota / central_excluir_nota.
 import { sb, rpc, todas } from "./api.js";
 import { E, cliente } from "./estado.js";
+import * as Anx from "./anexos.js";
 import { $, esc, somaDias, toast, avisoErro, perguntar, copiar } from "./ui.js";
 
 export const VIEWS = { cadinfo: ["info", "Informações cadastrais"], caddatas: ["data", "Datas e lembretes"], cadcont: ["contato", "Contatos"] };
 export const eh = (v) => v in VIEWS;
 const NOVO = { info: "+ Nova informação", data: "+ Nova data", contato: "+ Novo contato" };
-let tipo = "info", notas = [], aberta = null, pronto = false;
+let tipo = "info", notas = [], aberta = null, pronto = false, anxN = new Map();
 
 // próxima ocorrência de uma data que repete todo mês (ex.: fechamento do cartão dia 12)
 function proxima(n) {
@@ -52,7 +53,8 @@ export async function desenhar(view) {
   preparar();
   $("#ntNovo").textContent = NOVO[tipo];
   $("#ntQ").placeholder = tipo === "contato" ? "Buscar nome, cargo, telefone…" : "Buscar…";
-  notas = await todas(() => sb.from("central_notas_cliente").select("id, empresa_id, tipo, titulo, texto, data, dados, updated_at").eq("tipo", tipo).order("id"));
+  [notas, anxN] = await Promise.all([todas(() => sb.from("central_notas_cliente").select("id, empresa_id, tipo, titulo, texto, data, dados, updated_at").eq("tipo", tipo).order("id")),
+    Anx.contar("nota")]);
   desenharLista();
 }
 
@@ -66,13 +68,13 @@ function desenharLista() {
   const cartao = (n) => {
     if (tipo === "data") { const [txt, cls] = faltam(n.prox);
       return `<div class="ntc nd ${cls}" data-nota="${n.id}"><div class="ntdia"><b>${n.prox.slice(8, 10)}/${n.prox.slice(5, 7)}</b><span>${txt}</span></div>
-        <div><b>${esc(n.titulo)}</b>${cli(n)}${(n.dados || {}).repete === "mensal" ? '<span class="ntrep">todo mês</span>' : ""}${n.texto ? `<p>${esc(n.texto)}</p>` : ""}</div></div>`; }
+        <div><b>${esc(n.titulo)}</b>${Anx.clipe(anxN.get(n.id))}${cli(n)}${(n.dados || {}).repete === "mensal" ? '<span class="ntrep">todo mês</span>' : ""}${n.texto ? `<p>${esc(n.texto)}</p>` : ""}</div></div>`; }
     if (tipo === "contato") { const d = n.dados || {}, tel = String(d.telefone || "").replace(/\D/g, "");
-      return `<div class="ntc" data-nota="${n.id}"><b>${esc(n.titulo)}</b>${d.cargo ? `<small>${esc(d.cargo)}</small>` : ""}${cli(n)}
+      return `<div class="ntc" data-nota="${n.id}"><b>${esc(n.titulo)}</b>${Anx.clipe(anxN.get(n.id))}${d.cargo ? `<small>${esc(d.cargo)}</small>` : ""}${cli(n)}
         ${d.telefone ? `<div class="ntl"><a href="https://wa.me/${tel.length <= 11 ? "55" + tel : tel}" target="_blank" rel="noopener noreferrer">${esc(d.telefone)}</a><button type="button" class="mb" data-copiar="${esc(d.telefone)}">copiar</button></div>` : ""}
         ${d.email ? `<div class="ntl"><a href="mailto:${esc(d.email)}">${esc(d.email)}</a><button type="button" class="mb" data-copiar="${esc(d.email)}">copiar</button></div>` : ""}
         ${n.texto ? `<p>${esc(n.texto)}</p>` : ""}</div>`; }
-    return `<div class="ntc" data-nota="${n.id}"><b>${esc(n.titulo)}</b>${cli(n)}${n.texto ? `<p>${esc(n.texto)}</p>` : ""}
+    return `<div class="ntc" data-nota="${n.id}"><b>${esc(n.titulo)}</b>${Anx.clipe(anxN.get(n.id))}${cli(n)}${n.texto ? `<p>${esc(n.texto)}</p>` : ""}
       ${n.texto && n.texto.length < 200 ? `<div class="ntl"><button type="button" class="mb" data-copiar="${esc(n.texto)}">copiar</button></div>` : ""}</div>`;
   };
   $("#ntArea").innerHTML = vis.length ? `<div class="ntgrade">${vis.map(cartao).join("")}</div>`
@@ -94,6 +96,7 @@ function abrir(n) {
     const d = n.dados || {}; f.cargo.value = d.cargo || ""; f.telefone.value = d.telefone || ""; f.email.value = d.email || ""; f.repete.checked = d.repete === "mensal";
   } else if (tipo === "data") f.data.value = somaDias(E.hoje, 0);
   $("#ntMsg").hidden = true;
+  Anx.abrir("#ntAnx", "nota", n ? n.id : null).catch(avisoErro);
   $("#notaF").hidden = false; f.titulo.focus();
 }
 
@@ -102,10 +105,12 @@ async function salvar() {
   const dados = tipo === "contato" ? { cargo: f.cargo.value.trim(), telefone: f.telefone.value.trim(), email: f.email.value.trim() }
     : tipo === "data" ? (f.repete.checked ? { repete: "mensal" } : {}) : {};
   Object.keys(dados).forEach((k) => !dados[k] && delete dados[k]);
+  let id;
   try {
-    await rpc("central_salvar_nota", { p_id: aberta ? aberta.id : null, p_empresa: f.empresa.value || null, p_tipo: tipo, p_titulo: f.titulo.value,
+    id = await rpc("central_salvar_nota", { p_id: aberta ? aberta.id : null, p_empresa: f.empresa.value || null, p_tipo: tipo, p_titulo: f.titulo.value,
       p_texto: f.texto.value, p_data: tipo === "data" ? f.data.value || null : null, p_dados: dados });
   } catch (e) { $("#ntMsg").textContent = e.message; $("#ntMsg").hidden = false; return; }
+  await Anx.enviarFila("#ntAnx", id);
   toast("Salvo"); fechar(); await desenhar();
 }
 
