@@ -9,6 +9,15 @@ let app = null;   // { recarregarBase(), fecharOutras() }
 const ehAdm = () => E.eu && E.eu.papel === "administrador";
 const permite = (acao) => ehAdm() || E.perm[acao] === "s";        // 's' faz; o resto vira pedido ao Adm no banco
 const pp = (id) => `<span class="pp ${COR_PAPEL[papelDe(id)] || ""}">${esc(nomeDe(id))}</span>`;
+// dinheiro no campo: mostra "1.500,00"; lê "1.500,00", "1500,5", "1500.50" ou "1500" sem confundir ponto de milhar com centavos
+const fmtMoeda = (v) => (v === null || v === undefined || v === "" ? "" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+function lerMoeda(txt) {
+  let t = String(txt || "").replace(/[^\d,.-]/g, "");
+  if (!t) return null;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");        // formato brasileiro
+  else if (!/^-?\d+\.\d{1,2}$/.test(t)) t = t.replace(/\./g, "");       // só pontos de milhar
+  return Number(t);
+}
 const brl = (v) => (v === null || v === undefined || v === "" ? "—" : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
 const fmtCnpj = (c) => { const d = String(c || "").replace(/\D/g, ""); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : c || "—"; };
 const msg = (sel, t) => { $(sel).hidden = !t; $(sel).textContent = t || ""; };
@@ -43,6 +52,8 @@ function iniciarClientes() {
     const rm = ev.target.closest("[data-rm]"); if (rm) rm.closest(".row").remove();
   });
   $("#fForm").onsubmit = (ev) => { ev.preventDefault(); travar($("#fSalvar"), salvarFicha)(); };
+  // ao sair do campo, o honorário volta formatado (1.500,00)
+  $("#fForm").elements.honorario_mensal.addEventListener("blur", (ev) => { const v = lerMoeda(ev.target.value); if (v !== null && v >= 0) ev.target.value = fmtMoeda(v); });
   $("#fEncerrar").onclick = () => {
     const c = ficha; if (!c) return;
     if (!permite("cliente_sensivel")) return rpc("central_encerrar_cliente", { p_empresa: c.id }).then((r) => { avisoGravacao(r, ""); $("#ficha").hidden = true; }).catch(avisoErro);
@@ -102,7 +113,7 @@ function abrirFicha(id) {
   const f = $("#fForm").elements;
   const sel = f.situacao; [...sel.options].filter((o) => o.value === "encerrada").forEach((o) => o.remove());
   if (c.situacao === "encerrada") sel.insertAdjacentHTML("beforeend", '<option value="encerrada">Encerrada</option>');
-  CAMPOS.forEach((k) => { const el = f[k]; el.value = k === "cnpj" ? (c.cnpj ? fmtCnpj(c.cnpj) : "") : c[k] ?? ""; el.disabled = !novo && !sens && SENSIVEIS.includes(k); });
+  CAMPOS.forEach((k) => { const el = f[k]; el.value = k === "cnpj" ? (c.cnpj ? fmtCnpj(c.cnpj) : "") : k === "honorario_mensal" ? fmtMoeda(c[k]) : c[k] ?? ""; el.disabled = !novo && !sens && SENSIVEIS.includes(k); });
   f.codigo.disabled = !novo;
   const travaSocios = !novo && !sens;
   linhasLista("#fSocios", c.socios || [], travaSocios); linhasLista("#fContatos", c.contatos || [], false);
@@ -123,8 +134,7 @@ async function salvarFicha() {
   if (!novo) delete d.codigo;
   if (d.cnpj !== undefined) { d.cnpj = d.cnpj.replace(/\D/g, ""); if (d.cnpj.length !== 14) return msg("#fMsg", "O CNPJ precisa ter 14 números."); }
   if (d.honorario_mensal !== undefined) {
-    const v = d.honorario_mensal.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-    d.honorario_mensal = v === "" ? null : Number(v);
+    d.honorario_mensal = lerMoeda(d.honorario_mensal);
     if (d.honorario_mensal !== null && !(d.honorario_mensal >= 0)) return msg("#fMsg", "Honorário inválido.");
   }
   if (!d.inicio_contrato) delete d.inicio_contrato;     // data vazia não apaga a que existe
@@ -316,8 +326,13 @@ function iniciarRotinas() {
     const el = ev.target.closest("[data-v]"); if (!el) return;
     const v = vinc[Number(el.closest("tr").dataset.i)], k = el.dataset.v;
     v[k] = el.type === "checkbox" ? el.checked : el.value;
-    if (k === "on") el.closest("tr").classList.toggle("off", !el.checked);
+    if (k === "on") {
+      el.closest("tr").classList.toggle("off", !el.checked);
+      if (el.checked && preencher(v)) desenharVinculos();
+    }
   });
+  // aplica o "para todos" sozinho quando a pessoa digita/escolhe (não precisa lembrar de clicar em Aplicar)
+  ["todosDia", "todosResp"].forEach((n) => $("#rForm").elements[n].addEventListener("change", () => $("#rAplicar").click()));
   $("#rAplicar").onclick = () => {
     const f = $("#rForm").elements;
     vinc.filter((v) => v.on).forEach((v) => { if (f.todosDia.value) { v.dia = f.todosDia.value; v.diaSem = f.todosDia.value; } if (f.todosResp.value) v.resp = f.todosResp.value; });
@@ -367,6 +382,16 @@ function desenharCk(edita) {
 }
 function camposDoTipo() { const tp = $("#rForm").elements.tipo.value; document.querySelectorAll("#rForm [data-so]").forEach((l) => (l.hidden = !l.dataset.so.split(" ").includes(tp))); }
 
+// cliente recém-marcado sem dia/responsável: usa o "para todos" ou copia de outro cliente marcado
+function preencher(v) {
+  const f = $("#rForm").elements, outro = vinc.find((x) => x !== v && x.on && (x.dia || x.resp));
+  let mudou = false;
+  if (!v.dia && (f.todosDia.value || (outro && outro.dia))) { v.dia = f.todosDia.value || outro.dia; mudou = true; }
+  if (!v.meta && outro && outro.meta && !f.todosDia.value) { v.meta = outro.meta; mudou = true; }
+  if (!v.resp && !v.respOrig.length && (f.todosResp.value || (outro && outro.resp))) { v.resp = f.todosResp.value || outro.resp; mudou = true; }
+  return mudou;
+}
+
 // uma linha por cliente: vinculado?, dia (conforme o tipo), responsável, ativa
 function desenharVinculos() {
   const tipo = $("#rForm").elements.tipo.value, adm = permite("rotina"), dis = adm ? "" : "disabled";
@@ -386,7 +411,8 @@ function desenharVinculos() {
       <td><select data-v="resp" ${dis} aria-label="Responsável em ${esc(c.nome)}"><option value="">—</option>${opcGente(v.resp)}</select></td>
       <td><input type="checkbox" data-v="ativa" ${v.ativa ? "checked" : ""} ${dis} aria-label="Ativa em ${esc(c.nome)}"></td></tr>`; }).join("")}</tbody></table>`;
   const f = $("#rForm").elements;
-  f.todosResp.innerHTML = `<option value="">responsável…</option>${opcGente("")}`;
+  const respTodos = f.todosResp.value;   // redesenhar não pode perder o que a pessoa escolheu
+  f.todosResp.innerHTML = `<option value="">responsável…</option>${opcGente(respTodos)}`;
   f.todosDia.hidden = !["semanal", "mensal", "anual"].includes(tipo);
   f.todosDia.placeholder = tipo === "semanal" ? "dia 1-5" : "dia";
   $("#rTodos").hidden = !adm;
@@ -416,6 +442,7 @@ function abrirTarefa(nome) {
   $("#rSalvar").textContent = adm ? "Salvar" : "Pedir alteração ao Adm";
   $("#rExcluir").hidden = novo || !adm;
   msg("#rMsg", !novo && !t.freq ? "Esta tarefa tem tipos diferentes por cliente. Ao salvar, todos os clientes marcados passam a usar o tipo escolhido acima." : "");
+  el.todosDia.value = ""; el.todosResp.value = "";
   camposDoTipo(); desenharVinculos();
   abrirGaveta("#rotF");
 }
@@ -436,10 +463,11 @@ async function salvarTarefa() {
   if (novo && tarefas.some((x) => x.nome.toLowerCase() === nome.toLowerCase())) return msg("#rMsg", "Já existe uma tarefa com esse nome: abra ela e marque os clientes.");
   const marcados = vinc.filter((v) => v.on);
   if (!marcados.length) return msg("#rMsg", "Marque pelo menos um cliente.");
+  marcados.forEach((v) => { if (el.todosDia.value && !v.dia) v.dia = el.todosDia.value; if (el.todosResp.value && !v.resp && !v.respOrig.length) v.resp = el.todosResp.value; });
   for (const v of marcados) {
     const c = cliente(v.empresa_id).nome;
-    if (!v.resp && !v.respOrig.length) return msg("#rMsg", `Escolha o responsável em ${c}.`);
-    if ((tipo === "mensal" || tipo === "anual") && !(Number(v.dia) >= 1 && Number(v.dia) <= 31)) return msg("#rMsg", `Informe o dia da entrega em ${c}.`);
+    if (!v.resp && !v.respOrig.length) return msg("#rMsg", `Escolha o responsável em ${c} (na linha do cliente ou em "Para todos os marcados").`);
+    if ((tipo === "mensal" || tipo === "anual") && !(Number(v.dia) >= 1 && Number(v.dia) <= 31)) return msg("#rMsg", `Informe o dia da entrega em ${c} (na linha do cliente ou em "Para todos os marcados").`);
     if (tipo === "mensal" && v.meta && Number(v.meta) > Number(v.dia)) return msg("#rMsg", `Em ${c}, a meta não pode ser depois da entrega.`);
   }
   const tirar = vinc.filter((v) => !v.on && v.rot);
