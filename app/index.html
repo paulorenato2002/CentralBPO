@@ -544,6 +544,7 @@
     <label>Prazo<input type="date" id="chPrazo"></label>
   </div><div class="hint" style="font-size:11.5px;color:var(--ink3);margin-top:4px">Para pôr em impedimento, escreva o motivo na mensagem antes de trocar o status.</div></div>
   <div class="dsec"><h5>Andamento</h5><ol class="conversa" id="chConversa"></ol></div>
+  <div class="dsec" id="chAnx"></div>
   <form class="dsec" id="chForm" autocomplete="off">
     <textarea id="chTexto" rows="3" maxlength="4000" placeholder="Escreva uma mensagem (fica no andamento e vale como motivo ao mudar status ou responsável)"></textarea>
     <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="dbtn" type="submit" id="chEnviar" style="margin:0">Enviar mensagem</button></div>
@@ -561,6 +562,7 @@
       <label>Para quem<select name="resp"></select></label>
       <label>Prazo (opcional)<input type="date" name="prazo"></label>
     </div></div>
+    <div class="dsec" id="nsAnx"></div>
     <div class="dfoot" style="display:flex;gap:8px"><button class="dbtn" type="submit" id="nsSalvar">Abrir solicitação</button><button class="dbtn sec" type="button" id="nsCanc">Cancelar</button></div>
   </form>
 </div>
